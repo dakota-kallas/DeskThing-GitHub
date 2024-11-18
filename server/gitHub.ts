@@ -1,6 +1,6 @@
 import { DeskThing } from './index';
 import { DataInterface } from 'deskthing-server';
-import { GitHubData } from '../src/stores/gitHubStore';
+import { GitHubData, GitHubRepo, GitHubUser } from '../src/stores/gitHubStore';
 
 class GitHubService {
   private gitHubData: GitHubData;
@@ -9,6 +9,7 @@ class GitHubService {
   private deskthing: typeof DeskThing;
   private static instance: GitHubService | null = null;
   private refreshInterval: number = 5;
+  private gitHubAccessToken: string | null = null;
 
   constructor() {
     this.deskthing = DeskThing;
@@ -26,6 +27,10 @@ class GitHubService {
   private async updateGitHub() {
     this.deskthing.sendLog(`Fetching GitHub data...`);
     this.gitHubData = {} as GitHubData;
+
+    this.gitHubData.repository = await this.getGitHubRepo(
+      'itsriprod/deskthing'
+    );
 
     const now = new Date();
     const timeString = now.toLocaleTimeString([], {
@@ -67,6 +72,8 @@ class GitHubService {
       this.deskthing.sendLog('Updating settings...');
       this.refreshInterval =
         (data.settings.refreshInterval.value as number) || 5;
+      this.gitHubAccessToken =
+        (data.settings.gitHubAccessToken.value as string) || null;
       this.updateGitHub();
     } catch (error) {
       this.deskthing.sendLog('Error updating GitHub data: ' + error);
@@ -88,6 +95,63 @@ class GitHubService {
     }
     DeskThing.sendLog('Returning GitHub data');
     return this.gitHubData;
+  }
+
+  private async getGitHubRepo(path: string) {
+    try {
+      const headers: HeadersInit = {};
+
+      if (this.gitHubAccessToken) {
+        headers.Authorization = `Bearer ${this.gitHubAccessToken}`;
+      }
+
+      const response = await fetch(`https://api.github.com/repos/${path}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Status ${response.status} - ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      const user: GitHubUser = {
+        id: data.owner.id,
+        username: data.owner.login,
+        avatarUrl: data.owner.avatar_url,
+        url: data.owner.html_url,
+      };
+
+      const repo: GitHubRepo = {
+        id: data.id,
+        fullName: data.full_name,
+        name: data.name,
+        description: data.description,
+        stars: data.stargazers_count,
+        watchers: data.watchers_count,
+        forks: data.forks_count,
+        defaultBranch: data.default_branch,
+        updatedAt: data.updated_at,
+        createdAt: data.created_at,
+        pushedAt: data.pushed_at,
+        language: data.language,
+        archived: data.archived,
+        disabled: data.disabled,
+        visibility: data.visibility,
+        openIssues: data.open_issues_count,
+        private: data.private,
+        fork: data.fork,
+        size: data.size,
+        url: data.html_url,
+        owner: user,
+      };
+
+      return repo;
+    } catch (error) {
+      this.deskthing.sendLog('Error fetching GitHub data: ' + error);
+      return undefined;
+    }
   }
 }
 

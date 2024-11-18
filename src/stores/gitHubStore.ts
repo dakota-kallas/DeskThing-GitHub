@@ -2,11 +2,43 @@ import { DeskThing } from 'deskthing-client';
 import { SocketData } from 'deskthing-server';
 
 export type GitHubData = {
+  repository?: GitHubRepo;
   /**
    * Last Refreshed Time
    */
   lastUpdated?: string;
 };
+
+export interface GitHubUser {
+  username: string;
+  id: number;
+  avatarUrl: string;
+  url: string;
+}
+
+export interface GitHubRepo {
+  id: number;
+  name: string;
+  fullName: string;
+  private: boolean;
+  owner: GitHubUser;
+  url: string;
+  description: string | null;
+  fork: boolean;
+  createdAt: string;
+  updatedAt: string;
+  pushedAt: string;
+  size: number;
+  stars: number;
+  language: string | null;
+  archived: boolean;
+  disabled: boolean;
+  visibility: string;
+  forks: number;
+  openIssues: number;
+  watchers: number;
+  defaultBranch: string;
+}
 
 type GitHubListener = (gitHubData: GitHubData | null) => void;
 
