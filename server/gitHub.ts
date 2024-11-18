@@ -1,6 +1,12 @@
 import { DeskThing } from './index';
 import { DataInterface } from 'deskthing-server';
-import { GitHubData, GitHubRepo, GitHubUser } from '../src/stores/gitHubStore';
+import {
+  GitHubData,
+  GitHubIssue,
+  GitHubPullRequest,
+  GitHubRepo,
+  GitHubUser,
+} from '../src/stores/gitHubStore';
 
 class GitHubService {
   private gitHubData: GitHubData;
@@ -151,7 +157,109 @@ class GitHubService {
         size: data.size,
         url: data.html_url,
         owner: user,
+        pullRequests: [],
+        issues: [],
       };
+
+      // Fill in the Pull Requests
+      if (data.pulls_url) {
+        try {
+          const pullsResponse = await fetch(
+            data.pulls_url.replace('{/number}', ''),
+            {
+              method: 'GET',
+              headers,
+            }
+          );
+
+          if (!pullsResponse.ok) {
+            throw new Error(
+              `Status ${pullsResponse.status} - ${pullsResponse.statusText}`
+            );
+          }
+
+          const pullsData = await pullsResponse.json();
+
+          for (let pull of pullsData) {
+            const user: GitHubUser = {
+              id: pull.user.id,
+              username: pull.user.login,
+              avatarUrl: pull.user.avatar_url,
+              url: pull.user.html_url,
+            };
+
+            const pullRequest: GitHubPullRequest = {
+              id: pull.id,
+              title: pull.title,
+              state: pull.state,
+              locked: pull.locked,
+              user,
+              body: pull.body,
+              createdAt: pull.created_at,
+              updatedAt: pull.updated_at,
+              closedAt: pull.closed_at,
+              mergedAt: pull.merged_at,
+              draft: pull.draft,
+              baseBranch: pull.base.label,
+              headBranch: pull.head.label,
+            };
+
+            repo.pullRequests!.push(pullRequest);
+          }
+        } catch (error) {
+          repo.pullRequests = undefined;
+          this.deskthing.sendLog(
+            'Error fetching GitHub pull requests: ' + error
+          );
+        }
+
+        // Fill in the Issues
+        if (data.issues_url) {
+          try {
+            const issuesResponse = await fetch(
+              data.issues_url.replace('{/number}', ''),
+              {
+                method: 'GET',
+                headers,
+              }
+            );
+
+            if (!issuesResponse.ok) {
+              throw new Error(
+                `Status ${issuesResponse.status} - ${issuesResponse.statusText}`
+              );
+            }
+
+            const issuesData = await issuesResponse.json();
+
+            for (let issue of issuesData) {
+              const user: GitHubUser = {
+                id: issue.user.id,
+                username: issue.user.login,
+                avatarUrl: issue.user.avatar_url,
+                url: issue.user.html_url,
+              };
+
+              const gitHubIssue: GitHubIssue = {
+                id: issue.id,
+                title: issue.title,
+                state: issue.state,
+                locked: issue.locked,
+                user,
+                body: issue.body,
+                createdAt: issue.created_at,
+                updatedAt: issue.updated_at,
+                closedAt: issue.closed_at,
+              };
+
+              repo.issues!.push(gitHubIssue);
+            }
+          } catch (error) {
+            repo.issues = undefined;
+            this.deskthing.sendLog('Error fetching GitHub issues: ' + error);
+          }
+        }
+      }
 
       return repo;
     } catch (error) {

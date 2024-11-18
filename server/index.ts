@@ -7,6 +7,7 @@ import {
 const DeskThing = DK.getInstance();
 export { DeskThing }; // Required export of this exact name for the server to connect
 import GitHubService from './gitHub';
+import { AppSettings } from 'deskthing-server';
 
 const start = async () => {
   const gitHub = GitHubService.getInstance();
@@ -21,7 +22,7 @@ const start = async () => {
 
   // This is how to add settings (implementation may vary)
   if (!Data?.settings?.refreshInterval) {
-    setupSettings();
+    setupSettings(Data?.settings);
   }
 
   const handleGet = async (request: SocketData) => {
@@ -46,14 +47,24 @@ const start = async () => {
   DeskThing.on('stop', stop);
 };
 
-const setupSettings = async () => {
+const setupSettings = async (settings?: AppSettings) => {
+  let minRefreshInterval = 15;
+
+  if (
+    settings?.gitHubAccessToken?.value &&
+    (settings.gitHubAccessToken.value as string).length > 0
+  ) {
+    minRefreshInterval = 1;
+  }
+
   const refreshInterval: SettingsNumber = {
     label: 'Refresh Interval (minutes)',
-    description: 'The amount of minutes between each refresh.',
+    description:
+      'The amount of minutes between each refresh. (Use a GitHub Access Token to enable a lower refresh interval)',
     type: 'number',
-    value: 5,
+    value: 15,
     max: 60,
-    min: 1,
+    min: minRefreshInterval,
   };
 
   const gitHubAccessToken: SettingsString = {

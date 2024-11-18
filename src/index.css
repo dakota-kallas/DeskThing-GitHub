@@ -37,7 +37,7 @@ button:active {
 .contentContainer {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: start;
   height: calc(100% - 32px);
   padding: 8px;
 }

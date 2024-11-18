@@ -16,6 +16,18 @@ export interface GitHubUser {
   url: string;
 }
 
+export interface GitHubIssue {
+  id: number;
+  title: string;
+  state: string;
+  locked: boolean;
+  user: GitHubUser;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string | null;
+}
+
 export interface GitHubRepo {
   id: number;
   name: string;
@@ -38,6 +50,24 @@ export interface GitHubRepo {
   openIssues: number;
   watchers: number;
   defaultBranch: string;
+  pullRequests?: GitHubPullRequest[];
+  issues?: GitHubIssue[];
+}
+
+export interface GitHubPullRequest {
+  id: number;
+  title: string;
+  state: string;
+  locked: boolean;
+  user: GitHubUser;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string | null;
+  mergedAt: string | null;
+  draft: boolean;
+  baseBranch: string;
+  headBranch: string;
 }
 
 type GitHubListener = (gitHubData: GitHubData | null) => void;

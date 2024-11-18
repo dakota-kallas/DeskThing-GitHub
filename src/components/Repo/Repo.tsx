@@ -3,6 +3,7 @@ import { GitHubRepo } from '../../stores/gitHubStore';
 import { useEffect, useRef, useState } from 'react';
 import {
   EyeIcon,
+  GitPullRequestIcon,
   IssueOpenedIcon,
   RepoForkedIcon,
   RepoIcon,
@@ -45,6 +46,14 @@ const Repo = ({ repo }: RepoProps) => {
         <h2 className='repo--name'>{repo.name}</h2>
         <p className='repo--visibility'>{repo.visibility}</p>
       </div>
+      <div className='repo--owner'>
+        <img
+          src={repo.owner.avatarUrl}
+          alt='Owner Avatar'
+          className='repo--avatar'
+        />
+        <h3>{repo.owner.username}</h3>
+      </div>
       <div>
         <p className='repo--description'>{repo.description}</p>
       </div>
@@ -52,6 +61,10 @@ const Repo = ({ repo }: RepoProps) => {
         <button>
           <IssueOpenedIcon size={14} className='repo--icon' />
           View {repo.openIssues} Issues
+        </button>
+        <button>
+          <GitPullRequestIcon size={14} className='repo--icon' />
+          View {repo.pullRequests?.length} Pull Requests
         </button>
       </div>
       <div className='repo--counts'>
