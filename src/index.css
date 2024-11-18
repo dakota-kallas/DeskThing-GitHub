@@ -1,0 +1,34 @@
+button {
+  background: transparent;
+  background-color: transparent;
+
+  border: none;
+}
+button:focus {
+  outline: none;
+  border: none;
+}
+button:active {
+  outline: none;
+  border: none;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface-100: #121212;
+  --surface-200: #282828;
+  --surface-300: #3f3f3f;
+  --surface-400: #575757;
+  --surface-500: #717171;
+  --surface-600: #8b8b8b;
+  --text: white;
+  --sub-text: #a7a7a7;
+}
+
+.appContainer {
+  background-color: var(--surface-300);
+  overflow: hidden;
+}

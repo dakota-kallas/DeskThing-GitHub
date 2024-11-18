@@ -1,0 +1,17 @@
+{
+  "id": "github",
+  "isAudioSource": false,
+  "isScreenSaver": false,
+  "isWebApp": true,
+  "isLocalApp": false,
+  "requires": [],
+  "label": "GitHub",
+  "version": "1.0.0",
+  "version_code": "1.0",
+  "compatible_server": ["9"],
+  "compatible_client": ["9"],
+  "description": "TBD",
+  "author": "Dakota Kallas",
+  "platforms": ["linux", "windows", "mac"],
+  "repository": "https://github.com/dakota-kallas/DeskThing-GitHub"
+}
