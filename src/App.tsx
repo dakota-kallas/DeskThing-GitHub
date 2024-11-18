@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { GitHubStore } from './stores';
 import { GitHubData } from './stores/gitHubStore';
 import Header from './components/Header/Header';
+import Repo from './components/Repo/Repo';
 
 const App: React.FC = () => {
   const gitHubStore = GitHubStore;
@@ -29,6 +30,7 @@ const App: React.FC = () => {
   return (
     <div className='appContainer w-screen h-screen'>
       <Header lastUpdated={gitHubData?.lastUpdated} />
+      {gitHubData?.repository && <Repo repo={gitHubData.repository} />}
     </div>
   );
 };
