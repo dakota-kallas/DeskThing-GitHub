@@ -30,7 +30,9 @@ const App: React.FC = () => {
   return (
     <div className='appContainer w-screen h-screen'>
       <Header lastUpdated={gitHubData?.lastUpdated} />
-      {gitHubData?.repository && <Repo repo={gitHubData.repository} />}
+      <div className='contentContainer'>
+        {gitHubData?.repository && <Repo repo={gitHubData.repository} />}
+      </div>
     </div>
   );
 };

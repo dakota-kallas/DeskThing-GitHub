@@ -26,11 +26,17 @@ class GitHubService {
 
   private async updateGitHub() {
     this.deskthing.sendLog(`Fetching GitHub data...`);
-    this.gitHubData = {} as GitHubData;
 
-    this.gitHubData.repository = await this.getGitHubRepo(
-      'itsriprod/deskthing'
-    );
+    // TODO: Remove this check
+    if (this.gitHubData?.repository) {
+      this.deskthing.sendLog('No need to fetch data...');
+    } else {
+      this.deskthing.sendLog('Actually fetching...');
+      this.gitHubData = {} as GitHubData;
+      this.gitHubData.repository = await this.getGitHubRepo(
+        'itsriprod/deskthing'
+      );
+    }
 
     const now = new Date();
     const timeString = now.toLocaleTimeString([], {

@@ -1,0 +1,75 @@
+.repo {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background-color: var(--surface-200);
+  color: var(--text);
+  border-radius: 5px;
+}
+
+.repo--header {
+  display: flex;
+  align-items: center;
+}
+
+.repo--repoIcon {
+  color: var(--sub-text);
+  margin-top: 4px;
+  margin-right: 8px;
+}
+
+.repo--icon {
+  color: var(--sub-text);
+  margin-right: 4px;
+}
+
+.repo--name {
+  font-size: 36px;
+  font-weight: 600;
+  margin-right: 16px;
+  color: var(--text-header);
+}
+
+.repo--visibility {
+  padding: 2px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  border: 1px solid var(--sub-text);
+  color: var(--sub-text);
+}
+
+.repo--description {
+  font-size: 24px;
+  margin: 8px 0px;
+}
+
+.repo--actions {
+  margin: 16px 0px;
+}
+
+.repo button {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  font-weight: 600;
+  color: var(--sub-text);
+  filter: drop-shadow(0px 0px 2px #000000);
+  border-radius: 16px;
+  background-color: var(--surface-100);
+}
+
+.repo button .repo--icon {
+  margin-right: 8px;
+}
+
+.repo--counts {
+  display: flex;
+  font-size: 20px;
+  color: var(--sub-text);
+}
+
+.repo--count {
+  display: flex;
+  align-items: center;
+  margin-right: 24px;
+}

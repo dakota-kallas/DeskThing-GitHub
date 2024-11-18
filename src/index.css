@@ -26,9 +26,18 @@ button:active {
   --surface-600: #8b8b8b;
   --text: white;
   --sub-text: #a7a7a7;
+  --text-header: rgb(34, 148, 255);
 }
 
 .appContainer {
   background-color: var(--surface-300);
   overflow: hidden;
+}
+
+.contentContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(100% - 32px);
+  padding: 8px;
 }
