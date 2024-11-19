@@ -2,7 +2,10 @@ import { DeskThing } from 'deskthing-client';
 import { SocketData } from 'deskthing-server';
 
 export type GitHubData = {
-  repository?: GitHubRepo;
+  /**
+   * Authenticated GitHub User's Repositories
+   */
+  myRepositories?: GitHubRepo[];
   /**
    * Last Refreshed Time
    */
@@ -37,21 +40,19 @@ export interface GitHubRepo {
   url: string;
   description: string | null;
   fork: boolean;
-  createdAt: string;
-  updatedAt: string;
-  pushedAt: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  pushedAt: string | null;
   size: number;
   stars: number;
   language: string | null;
   archived: boolean;
   disabled: boolean;
-  visibility: string;
+  visibility?: string;
   forks: number;
   openIssues: number;
   watchers: number;
   defaultBranch: string;
-  pullRequests?: GitHubPullRequest[];
-  issues?: GitHubIssue[];
 }
 
 export interface GitHubPullRequest {
@@ -59,8 +60,8 @@ export interface GitHubPullRequest {
   title: string;
   state: string;
   locked: boolean;
-  user: GitHubUser;
-  body: string;
+  user?: GitHubUser;
+  body: string | null;
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;
@@ -75,14 +76,19 @@ type GitHubListener = (gitHubData: GitHubData | null) => void;
 export class GitHubStore {
   private static instance: GitHubStore | null = null;
   private gitHubData: GitHubData | null = null;
+  private pullRequests: GitHubPullRequest[] | null = null;
   private deskThing: DeskThing;
   private listeners: GitHubListener[] = [];
 
   constructor() {
     this.deskThing = DeskThing.getInstance();
     this.deskThing.on('github', (data: SocketData) => {
-      this.gitHubData = data.payload as GitHubData;
-      this.notifyListeners();
+      if (data.type === 'github_data') {
+        this.gitHubData = data.payload as GitHubData;
+        this.notifyListeners();
+      } else if (data.type === 'github_pull_requests') {
+        this.pullRequests = data.payload as GitHubPullRequest[];
+      }
     });
 
     this.requestGitHubData();
@@ -101,11 +107,21 @@ export class GitHubStore {
       this.listeners = this.listeners.filter((l) => l !== listener);
     };
   }
+
   getGitHubData(): GitHubData | null {
     if (!this.gitHubData) {
       this.requestGitHubData();
     }
     return this.gitHubData;
+  }
+
+  getPullRequests(
+    ownerName: string,
+    repoName: string
+  ): GitHubPullRequest[] | null {
+    this.requestPullRequests(ownerName, repoName);
+
+    return this.pullRequests;
   }
 
   private notifyListeners() {
@@ -119,10 +135,25 @@ export class GitHubStore {
     });
     this.listeners.forEach((listener) => listener(this.gitHubData));
   }
+
   async requestGitHubData(): Promise<void> {
     this.deskThing.sendMessageToParent({
       type: 'get',
       request: 'github_data',
+    });
+  }
+
+  async requestPullRequests(
+    ownerName: string,
+    repoName: string
+  ): Promise<void> {
+    this.deskThing.sendMessageToParent({
+      type: 'get',
+      request: 'github_pull_requests',
+      payload: {
+        ownerName,
+        repoName,
+      },
     });
   }
 }

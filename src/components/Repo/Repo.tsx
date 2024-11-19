@@ -12,9 +12,10 @@ import {
 
 interface RepoProps {
   repo: GitHubRepo;
+  onPullRequestsClick: () => void;
 }
 
-const Repo = ({ repo }: RepoProps) => {
+const Repo = ({ repo, onPullRequestsClick }: RepoProps) => {
   const [isTallEnough, setIsTallEnough] = useState(false);
   const contentContainerRef = useRef<HTMLDivElement>(null);
 
@@ -60,11 +61,11 @@ const Repo = ({ repo }: RepoProps) => {
       <div className='repo--actions'>
         <button>
           <IssueOpenedIcon size={14} className='repo--icon' />
-          View {repo.openIssues} Issues
+          View Issues
         </button>
-        <button>
+        <button onClick={onPullRequestsClick}>
           <GitPullRequestIcon size={14} className='repo--icon' />
-          View {repo.pullRequests?.length} Pull Requests
+          View Pull Requests
         </button>
       </div>
       <div className='repo--counts'>
@@ -79,6 +80,10 @@ const Repo = ({ repo }: RepoProps) => {
         <span className='repo--count'>
           <RepoForkedIcon size={20} className='repo--icon' />
           <p>{repo.forks}</p>
+        </span>
+        <span className='repo--count'>
+          <IssueOpenedIcon size={20} className='repo--icon' />
+          <p>{repo.openIssues}</p>
         </span>
       </div>
     </div>

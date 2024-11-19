@@ -37,6 +37,16 @@ const start = async () => {
       } else {
         console.warn('Error getting GitHub data');
       }
+    } else if (request.request === 'github_pull_requests') {
+      DeskThing.sendLog('Getting GitHub Pull Requests');
+      const pullRequests = await gitHub.getPullRequestsForRepo(
+        (request.payload as any)?.ownerName,
+        (request.payload as any)?.repoName
+      );
+      DeskThing.sendDataToClient({
+        type: 'github_pull_requests',
+        payload: pullRequests,
+      });
     }
   };
 
@@ -48,15 +58,6 @@ const start = async () => {
 };
 
 const setupSettings = async (settings?: AppSettings) => {
-  let minRefreshInterval = 15;
-
-  if (
-    settings?.gitHubAccessToken?.value &&
-    (settings.gitHubAccessToken.value as string).length > 0
-  ) {
-    minRefreshInterval = 1;
-  }
-
   const refreshInterval: SettingsNumber = {
     label: 'Refresh Interval (minutes)',
     description:
@@ -64,7 +65,7 @@ const setupSettings = async (settings?: AppSettings) => {
     type: 'number',
     value: 15,
     max: 60,
-    min: minRefreshInterval,
+    min: 1,
   };
 
   const gitHubAccessToken: SettingsString = {

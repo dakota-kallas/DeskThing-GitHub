@@ -7,15 +7,17 @@ import {
   GitHubRepo,
   GitHubUser,
 } from '../src/stores/gitHubStore';
+import { Octokit } from '@octokit/rest';
 
 class GitHubService {
-  private gitHubData: GitHubData;
+  private gitHubData: GitHubData = {};
   private lastUpdateTime: Date | null;
   private updateTaskId: (() => void) | null = null;
   private deskthing: typeof DeskThing;
   private static instance: GitHubService | null = null;
   private refreshInterval: number = 5;
   private gitHubAccessToken: string | null = null;
+  private lastModifiedRequest: string | null = null;
 
   constructor() {
     this.deskthing = DeskThing;
@@ -33,16 +35,12 @@ class GitHubService {
   private async updateGitHub() {
     this.deskthing.sendLog(`Fetching GitHub data...`);
 
-    // TODO: Remove this check
-    if (this.gitHubData?.repository) {
-      this.deskthing.sendLog('No need to fetch data...');
-    } else {
-      this.deskthing.sendLog('Actually fetching...');
-      this.gitHubData = {} as GitHubData;
-      this.gitHubData.repository = await this.getGitHubRepo(
-        'itsriprod/deskthing'
-      );
-    }
+    // Setup GitHub API Requests
+    const octokit = new Octokit({
+      auth: this.gitHubAccessToken || '',
+    });
+
+    await this.fillMyRepositories(octokit);
 
     const now = new Date();
     const timeString = now.toLocaleTimeString([], {
@@ -109,163 +107,131 @@ class GitHubService {
     return this.gitHubData;
   }
 
-  private async getGitHubRepo(path: string) {
+  private async fillMyRepositories(octokit: Octokit) {
     try {
-      const headers: HeadersInit = {};
-
-      if (this.gitHubAccessToken) {
-        headers.Authorization = `Bearer ${this.gitHubAccessToken}`;
+      const requestHeaders: Record<string, string> = {};
+      if (this.lastModifiedRequest) {
+        requestHeaders['If-Modified-Since'] = this.lastModifiedRequest;
       }
 
-      const response = await fetch(`https://api.github.com/repos/${path}`, {
-        method: 'GET',
-        headers,
+      const { data, headers, status } =
+        await octokit.repos.listForAuthenticatedUser({ requestHeaders });
+
+      if (headers['x-ratelimit-remaining'] === '0') {
+        this.deskthing.sendLog('Rate limit reached');
+        return;
+      }
+
+      // Check if the data has been modified
+      if ((status as number) === 304) {
+        this.deskthing.sendLog('No updates to repositories');
+        return;
+      }
+
+      if ((status as number) !== 200) {
+        this.deskthing.sendLog(`Unexpected status: ${status}`);
+        return;
+      }
+
+      this.lastModifiedRequest = headers['last-modified'] ?? null;
+
+      const myRepos: GitHubRepo[] = [];
+
+      data.forEach((repo) => {
+        const user: GitHubUser = {
+          id: repo.owner.id,
+          username: repo.owner.login,
+          avatarUrl: repo.owner.avatar_url,
+          url: repo.owner.html_url,
+        };
+
+        const myRepo: GitHubRepo = {
+          id: repo.id,
+          fullName: repo.full_name,
+          name: repo.name,
+          description: repo.description,
+          stars: repo.stargazers_count,
+          watchers: repo.watchers_count,
+          forks: repo.forks_count,
+          defaultBranch: repo.default_branch,
+          updatedAt: repo.updated_at,
+          createdAt: repo.created_at,
+          pushedAt: repo.pushed_at,
+          language: repo.language,
+          archived: repo.archived,
+          disabled: repo.disabled,
+          visibility: repo.visibility,
+          openIssues: repo.open_issues_count,
+          private: repo.private,
+          fork: repo.fork,
+          size: repo.size,
+          url: repo.html_url,
+          owner: user,
+        };
+
+        myRepos.push(myRepo);
       });
 
-      if (!response.ok) {
-        throw new Error(`Status ${response.status} - ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      const user: GitHubUser = {
-        id: data.owner.id,
-        username: data.owner.login,
-        avatarUrl: data.owner.avatar_url,
-        url: data.owner.html_url,
-      };
-
-      const repo: GitHubRepo = {
-        id: data.id,
-        fullName: data.full_name,
-        name: data.name,
-        description: data.description,
-        stars: data.stargazers_count,
-        watchers: data.watchers_count,
-        forks: data.forks_count,
-        defaultBranch: data.default_branch,
-        updatedAt: data.updated_at,
-        createdAt: data.created_at,
-        pushedAt: data.pushed_at,
-        language: data.language,
-        archived: data.archived,
-        disabled: data.disabled,
-        visibility: data.visibility,
-        openIssues: data.open_issues_count,
-        private: data.private,
-        fork: data.fork,
-        size: data.size,
-        url: data.html_url,
-        owner: user,
-        pullRequests: [],
-        issues: [],
-      };
-
-      // Fill in the Pull Requests
-      if (data.pulls_url) {
-        try {
-          const pullsResponse = await fetch(
-            data.pulls_url.replace('{/number}', ''),
-            {
-              method: 'GET',
-              headers,
-            }
-          );
-
-          if (!pullsResponse.ok) {
-            throw new Error(
-              `Status ${pullsResponse.status} - ${pullsResponse.statusText}`
-            );
-          }
-
-          const pullsData = await pullsResponse.json();
-
-          for (let pull of pullsData) {
-            const user: GitHubUser = {
-              id: pull.user.id,
-              username: pull.user.login,
-              avatarUrl: pull.user.avatar_url,
-              url: pull.user.html_url,
-            };
-
-            const pullRequest: GitHubPullRequest = {
-              id: pull.id,
-              title: pull.title,
-              state: pull.state,
-              locked: pull.locked,
-              user,
-              body: pull.body,
-              createdAt: pull.created_at,
-              updatedAt: pull.updated_at,
-              closedAt: pull.closed_at,
-              mergedAt: pull.merged_at,
-              draft: pull.draft,
-              baseBranch: pull.base.label,
-              headBranch: pull.head.label,
-            };
-
-            repo.pullRequests!.push(pullRequest);
-          }
-        } catch (error) {
-          repo.pullRequests = undefined;
-          this.deskthing.sendLog(
-            'Error fetching GitHub pull requests: ' + error
-          );
-        }
-
-        // Fill in the Issues
-        if (data.issues_url) {
-          try {
-            const issuesResponse = await fetch(
-              data.issues_url.replace('{/number}', ''),
-              {
-                method: 'GET',
-                headers,
-              }
-            );
-
-            if (!issuesResponse.ok) {
-              throw new Error(
-                `Status ${issuesResponse.status} - ${issuesResponse.statusText}`
-              );
-            }
-
-            const issuesData = await issuesResponse.json();
-
-            for (let issue of issuesData) {
-              const user: GitHubUser = {
-                id: issue.user.id,
-                username: issue.user.login,
-                avatarUrl: issue.user.avatar_url,
-                url: issue.user.html_url,
-              };
-
-              const gitHubIssue: GitHubIssue = {
-                id: issue.id,
-                title: issue.title,
-                state: issue.state,
-                locked: issue.locked,
-                user,
-                body: issue.body,
-                createdAt: issue.created_at,
-                updatedAt: issue.updated_at,
-                closedAt: issue.closed_at,
-              };
-
-              repo.issues!.push(gitHubIssue);
-            }
-          } catch (error) {
-            repo.issues = undefined;
-            this.deskthing.sendLog('Error fetching GitHub issues: ' + error);
-          }
-        }
-      }
-
-      return repo;
+      this.gitHubData.myRepositories = myRepos;
     } catch (error) {
-      this.deskthing.sendLog('Error fetching GitHub data: ' + error);
-      return undefined;
+      this.deskthing.sendLog('Error fetching repositories: ' + error);
     }
+  }
+
+  public async getPullRequestsForRepo(ownerName: string, repoName: string) {
+    const octokit = new Octokit({
+      auth: this.gitHubAccessToken || '',
+    });
+
+    const { headers, status, data } = await octokit.pulls.list({
+      owner: ownerName,
+      repo: repoName,
+      state: 'open', // Can be "open", "closed", or "all"
+      per_page: 100, // Number of results per page (max 100)
+    });
+
+    if (headers['x-ratelimit-remaining'] === '0') {
+      this.deskthing.sendLog('Rate limit reached');
+      return;
+    }
+
+    if (status !== 200) {
+      return;
+    }
+
+    const pullRequests: GitHubPullRequest[] = [];
+
+    data.forEach((pull) => {
+      const pullRequest: GitHubPullRequest = {
+        id: pull.id,
+        title: pull.title,
+        state: pull.state,
+        locked: pull.locked,
+        body: pull.body,
+        createdAt: pull.created_at,
+        updatedAt: pull.updated_at,
+        closedAt: pull.closed_at,
+        mergedAt: pull.merged_at,
+        draft: pull.draft ?? false,
+        baseBranch: pull.base.label,
+        headBranch: pull.head.label,
+      };
+
+      if (pull.user) {
+        const user: GitHubUser = {
+          id: pull.user.id,
+          username: pull.user.login,
+          avatarUrl: pull.user.avatar_url,
+          url: pull.user.html_url,
+        };
+
+        pullRequest.user = user;
+      }
+
+      pullRequests.push(pullRequest);
+    });
+
+    return pullRequests;
   }
 }
 

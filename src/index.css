@@ -19,6 +19,7 @@ button:active {
 
 :root {
   --surface-100: #121212;
+  --surface-150: #1a1a1a;
   --surface-200: #282828;
   --surface-300: #3f3f3f;
   --surface-400: #575757;
@@ -40,4 +41,20 @@ button:active {
   align-items: start;
   height: calc(100% - 32px);
   padding: 8px;
+}
+
+.repoContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1 1 auto;
+}
+
+.repoContainer button {
+  filter: drop-shadow(0px 0px 4px #000000);
+  margin: 0px -4px;
+}
+
+.repoContainer button:active {
+  filter: drop-shadow(0px 0px 1px #000000);
 }
