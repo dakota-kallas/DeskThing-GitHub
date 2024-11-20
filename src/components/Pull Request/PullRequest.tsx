@@ -6,12 +6,14 @@ import {
   GitPullRequestDraftIcon,
   GitPullRequestIcon,
 } from '@primer/octicons-react';
+import { RxOpenInNewWindow } from 'react-icons/rx';
 
 interface PullRequestProps {
   pullRequest: GitHubPullRequest;
+  onOpenClick: (url: string) => void;
 }
 
-const PullRequest = ({ pullRequest }: PullRequestProps) => {
+const PullRequest = ({ pullRequest, onOpenClick }: PullRequestProps) => {
   const createdDate = new Date(pullRequest.createdAt).toLocaleDateString(
     'en-US',
     {
@@ -20,17 +22,28 @@ const PullRequest = ({ pullRequest }: PullRequestProps) => {
       year: 'numeric',
     }
   );
+
   return (
     <div className='pull'>
-      <div className='pull--details'>
-        {getIcon()}
-        <h2>{pullRequest.title}</h2>
+      <div>
+        <div className='pull--details'>
+          {getIcon()}
+          <h2>{pullRequest.title}</h2>
+        </div>
+        <div className='pull-subDetails'>
+          <p>#{pullRequest.number}</p>
+          <p>created on {createdDate}</p>
+          {pullRequest.user && <p>by {pullRequest.user?.username}</p>}
+        </div>
       </div>
-      <div className='pull-subDetails'>
-        <p>#{pullRequest.number}</p>
-        <p>created on {createdDate}</p>
-        {pullRequest.user && <p>by {pullRequest.user?.username}</p>}
-      </div>
+      <button
+        className='pull--open'
+        onClick={() => {
+          onOpenClick(pullRequest.url);
+        }}
+      >
+        <RxOpenInNewWindow size={32} />
+      </button>
     </div>
   );
 

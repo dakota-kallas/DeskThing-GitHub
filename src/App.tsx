@@ -17,6 +17,36 @@ const App: React.FC = () => {
   );
   const repoContainerRef = useRef<HTMLDivElement | null>(null);
 
+  const atStart = currentRepoIndex === 0;
+  const atEnd =
+    gitHubData?.myRepositories &&
+    currentRepoIndex === gitHubData.myRepositories.length - 1;
+  const hasRepositories =
+    gitHubData?.myRepositories && gitHubData?.myRepositories?.length > 0;
+  const currentRepo = hasRepositories
+    ? gitHubData.myRepositories![currentRepoIndex]
+    : null;
+
+  useEffect(() => {
+    const handleScroll = (event: WheelEvent) => {
+      if (event.deltaX !== 0 && repoContainerRef.current) {
+        event.preventDefault();
+        console.log('Scrolling horizontally:', event.deltaX, atStart, atEnd);
+        if (event.deltaX > 0 && !atStart) {
+          setCurrentRepoIndex((prev) => prev - 1);
+        } else if (event.deltaX < 0 && !atEnd) {
+          setCurrentRepoIndex((prev) => prev + 1);
+        }
+      }
+    };
+
+    document?.addEventListener('wheel', handleScroll, { passive: false });
+
+    return () => {
+      document?.removeEventListener('wheel', handleScroll);
+    };
+  }, [atEnd, atStart]);
+
   useEffect(() => {
     const handleGitHubData = async (data: GitHubData | null) => {
       if (!data) {
@@ -58,21 +88,11 @@ const App: React.FC = () => {
     gitHubStore.getPullRequests(repo.owner.username, repo.name);
   }
 
-  const atStart = currentRepoIndex === 0;
-  const atEnd =
-    gitHubData?.myRepositories &&
-    currentRepoIndex === gitHubData.myRepositories.length - 1;
-  const hasRepositories =
-    gitHubData?.myRepositories && gitHubData?.myRepositories?.length > 0;
-  const currentRepo = hasRepositories
-    ? gitHubData.myRepositories![currentRepoIndex]
-    : null;
-
   return (
     <div className='appContainer w-screen h-screen'>
       <Header lastUpdated={gitHubData?.lastUpdated} />
       <div className='contentContainer'>
-        {!pullRequests && hasRepositories && (
+        {(!pullRequests || pullRequests.length == 0) && hasRepositories && (
           <div className='repoContainer' ref={repoContainerRef}>
             {/* Previous Button */}
             <div className='repoContainer--navigation'>
@@ -103,7 +123,7 @@ const App: React.FC = () => {
         )}
 
         {/* Pull Requests Section */}
-        {pullRequests && pullRequests?.length > 0 && (
+        {pullRequests && pullRequests.length > 0 && (
           <PullRequests
             pullRequests={pullRequests}
             onBackClick={handleBackClick}

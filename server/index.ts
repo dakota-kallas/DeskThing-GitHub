@@ -47,6 +47,9 @@ const start = async () => {
         type: 'github_pull_requests',
         payload: pullRequests,
       });
+    } else if (request.request === 'open_url') {
+      DeskThing.sendLog(`Opening URL: ${request.payload}`);
+      DeskThing.openUrl(request.payload as string);
     }
   };
 

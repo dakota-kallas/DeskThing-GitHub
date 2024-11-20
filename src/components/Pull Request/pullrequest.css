@@ -1,10 +1,14 @@
 .pull {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   background-color: var(--surface-200);
   margin-bottom: 8px;
   font-size: 20px;
   padding: 4px 8px;
   border-radius: 8px;
-  margin-right: 4px;
+  margin-right: 20px;
+  overflow: hidden;
 }
 
 .pull--details {
@@ -14,6 +18,10 @@
 
 .pull--details h2 {
   margin: 0px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 600px;
 }
 
 .pull-subDetails {
@@ -42,4 +50,13 @@
 
 .pull--mergedIcon {
   color: #ab7df8;
+}
+
+.pull--open {
+  color: var(--sub-text);
+}
+
+.pull--open:active {
+  transform: scale(0.99); /* Slightly shrink the button */
+  color: var(--surface-400);
 }

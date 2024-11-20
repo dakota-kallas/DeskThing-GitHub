@@ -70,6 +70,7 @@ export interface GitHubPullRequest {
   draft: boolean;
   baseBranch: string;
   headBranch: string;
+  url: string;
 }
 
 type GitHubListener = (gitHubData: GitHubData | null) => void;
@@ -118,6 +119,14 @@ export class GitHubStore {
     return () => {
       this.listeners = this.listeners.filter((l) => l !== listener);
     };
+  }
+
+  openURL(url: string) {
+    this.deskThing.send({
+      type: 'get',
+      request: 'open_url',
+      payload: url,
+    });
   }
 
   getGitHubData(): GitHubData | null {

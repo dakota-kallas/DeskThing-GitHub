@@ -17,7 +17,9 @@ class GitHubService {
   private static instance: GitHubService | null = null;
   private refreshInterval: number = 5;
   private gitHubAccessToken: string | null = null;
-  private lastModifiedRequest: string | null = null;
+  private repoRequestEtag: string | null = null;
+  private pullRequestRequestEtags: { [key: string]: string | null } = {};
+  private pullRequests: { [key: string]: GitHubPullRequest[] } = {};
 
   constructor() {
     this.deskthing = DeskThing;
@@ -110,30 +112,21 @@ class GitHubService {
   private async fillMyRepositories(octokit: Octokit) {
     try {
       const requestHeaders: Record<string, string> = {};
-      if (this.lastModifiedRequest) {
-        requestHeaders['If-Modified-Since'] = this.lastModifiedRequest;
+      if (this.repoRequestEtag) {
+        requestHeaders['If-None-Match'] = this.repoRequestEtag;
       }
 
-      const { data, headers, status } =
-        await octokit.repos.listForAuthenticatedUser({ requestHeaders });
+      const { data, headers } = await octokit.repos.listForAuthenticatedUser({
+        per_page: 100,
+        headers: requestHeaders,
+      });
 
       if (headers['x-ratelimit-remaining'] === '0') {
         this.deskthing.sendLog('Rate limit reached');
         return;
       }
 
-      // Check if the data has been modified
-      if ((status as number) === 304) {
-        this.deskthing.sendLog('No updates to repositories');
-        return;
-      }
-
-      if ((status as number) !== 200) {
-        this.deskthing.sendLog(`Unexpected status: ${status}`);
-        return;
-      }
-
-      this.lastModifiedRequest = headers['last-modified'] ?? null;
+      this.repoRequestEtag = headers.etag ?? null;
 
       const myRepos: GitHubRepo[] = [];
 
@@ -176,65 +169,89 @@ class GitHubService {
 
       this.gitHubData.myRepositories = myRepos;
     } catch (error) {
+      if (error.status && error.status == 304) {
+        this.deskthing.sendLog(`No updates to Repositories`);
+        return;
+      }
       this.deskthing.sendLog('Error fetching repositories: ' + error);
     }
   }
 
   public async getPullRequestsForRepo(ownerName: string, repoName: string) {
-    const octokit = new Octokit({
-      auth: this.gitHubAccessToken || '',
-    });
+    try {
+      const octokit = new Octokit({
+        auth: this.gitHubAccessToken || '',
+      });
 
-    const { headers, status, data } = await octokit.pulls.list({
-      owner: ownerName,
-      repo: repoName,
-      state: 'all', // Can be "open", "closed", or "all"
-      per_page: 100, // Number of results per page (max 100)
-    });
-
-    if (headers['x-ratelimit-remaining'] === '0') {
-      this.deskthing.sendLog('Rate limit reached');
-      return;
-    }
-
-    if (status !== 200) {
-      return;
-    }
-
-    const pullRequests: GitHubPullRequest[] = [];
-
-    data.forEach((pull) => {
-      const pullRequest: GitHubPullRequest = {
-        id: pull.id,
-        number: pull.number,
-        title: pull.title,
-        state: pull.state,
-        locked: pull.locked,
-        body: pull.body,
-        createdAt: pull.created_at,
-        updatedAt: pull.updated_at,
-        closedAt: pull.closed_at,
-        mergedAt: pull.merged_at,
-        draft: pull.draft ?? false,
-        baseBranch: pull.base.label,
-        headBranch: pull.head.label,
-      };
-
-      if (pull.user) {
-        const user: GitHubUser = {
-          id: pull.user.id,
-          username: pull.user.login,
-          avatarUrl: pull.user.avatar_url,
-          url: pull.user.html_url,
-        };
-
-        pullRequest.user = user;
+      const requestHeaders: Record<string, string> = {};
+      if (this.pullRequestRequestEtags[`${ownerName}/${repoName}`]) {
+        requestHeaders['If-None-Match'] =
+          this.pullRequestRequestEtags[`${ownerName}/${repoName}`]!;
       }
 
-      pullRequests.push(pullRequest);
-    });
+      const { headers, data } = await octokit.pulls.list({
+        headers: requestHeaders,
+        owner: ownerName,
+        repo: repoName,
+        state: 'all',
+        per_page: 100,
+      });
 
-    return pullRequests;
+      if (headers['x-ratelimit-remaining'] === '0') {
+        this.deskthing.sendLog('Rate limit reached');
+        return;
+      }
+
+      this.pullRequestRequestEtags[`${ownerName}/${repoName}`] =
+        headers.etag ?? null;
+
+      const pullRequests: GitHubPullRequest[] = [];
+
+      data.forEach((pull) => {
+        const pullRequest: GitHubPullRequest = {
+          id: pull.id,
+          number: pull.number,
+          title: pull.title,
+          state: pull.state,
+          locked: pull.locked,
+          body: pull.body,
+          createdAt: pull.created_at,
+          updatedAt: pull.updated_at,
+          closedAt: pull.closed_at,
+          mergedAt: pull.merged_at,
+          draft: pull.draft ?? false,
+          baseBranch: pull.base.label,
+          headBranch: pull.head.label,
+          url: pull.html_url,
+        };
+
+        if (pull.user) {
+          const user: GitHubUser = {
+            id: pull.user.id,
+            username: pull.user.login,
+            avatarUrl: pull.user.avatar_url,
+            url: pull.user.html_url,
+          };
+
+          pullRequest.user = user;
+        }
+
+        pullRequests.push(pullRequest);
+      });
+
+      this.pullRequests[`${ownerName}/${repoName}`] = pullRequests;
+
+      return pullRequests;
+    } catch (error) {
+      if (error.status && error.status == 304) {
+        this.deskthing.sendLog(
+          `No updates to Pull Requests for ${ownerName}/${repoName}`
+        );
+        return this.pullRequests[`${ownerName}/${repoName}`];
+      }
+      this.deskthing.sendError(`Error fetching pull requests: ${error}`);
+      return undefined;
+    }
   }
 }
 
