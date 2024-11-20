@@ -137,11 +137,13 @@ class GitHubService {
 
       const myRepos: GitHubRepo[] = [];
 
-      data.forEach((repo) => {
+      for (const repo of data) {
         const user: GitHubUser = {
           id: repo.owner.id,
           username: repo.owner.login,
-          avatarUrl: repo.owner.avatar_url,
+          avatarUrl: await this.deskthing.encodeImageFromUrl(
+            repo.owner.avatar_url
+          ),
           url: repo.owner.html_url,
         };
 
@@ -170,7 +172,7 @@ class GitHubService {
         };
 
         myRepos.push(myRepo);
-      });
+      }
 
       this.gitHubData.myRepositories = myRepos;
     } catch (error) {
@@ -186,7 +188,7 @@ class GitHubService {
     const { headers, status, data } = await octokit.pulls.list({
       owner: ownerName,
       repo: repoName,
-      state: 'open', // Can be "open", "closed", or "all"
+      state: 'all', // Can be "open", "closed", or "all"
       per_page: 100, // Number of results per page (max 100)
     });
 
@@ -204,6 +206,7 @@ class GitHubService {
     data.forEach((pull) => {
       const pullRequest: GitHubPullRequest = {
         id: pull.id,
+        number: pull.number,
         title: pull.title,
         state: pull.state,
         locked: pull.locked,

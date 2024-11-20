@@ -57,6 +57,7 @@ export interface GitHubRepo {
 
 export interface GitHubPullRequest {
   id: number;
+  number: number;
   title: string;
   state: string;
   locked: boolean;
@@ -72,6 +73,7 @@ export interface GitHubPullRequest {
 }
 
 type GitHubListener = (gitHubData: GitHubData | null) => void;
+type PullRequestsListener = (pullRequests: GitHubPullRequest[] | null) => void;
 
 export class GitHubStore {
   private static instance: GitHubStore | null = null;
@@ -79,6 +81,7 @@ export class GitHubStore {
   private pullRequests: GitHubPullRequest[] | null = null;
   private deskThing: DeskThing;
   private listeners: GitHubListener[] = [];
+  private pullRequestsListener: PullRequestsListener = () => {};
 
   constructor() {
     this.deskThing = DeskThing.getInstance();
@@ -88,6 +91,7 @@ export class GitHubStore {
         this.notifyListeners();
       } else if (data.type === 'github_pull_requests') {
         this.pullRequests = data.payload as GitHubPullRequest[];
+        this.pullRequestsListener(this.pullRequests);
       }
     });
 
@@ -99,6 +103,14 @@ export class GitHubStore {
       GitHubStore.instance = new GitHubStore();
     }
     return GitHubStore.instance;
+  }
+
+  onPullRequestsRetrieved(method: PullRequestsListener) {
+    this.pullRequestsListener = method;
+
+    return () => {
+      this.pullRequestsListener = () => {};
+    };
   }
 
   on(listener: GitHubListener): () => void {
@@ -128,7 +140,7 @@ export class GitHubStore {
     if (!this.gitHubData) {
       this.getGitHubData();
     }
-    this.deskThing.sendMessageToParent({
+    this.deskThing.send({
       app: 'client',
       type: 'log',
       payload: 'Getting GitHub data',
@@ -137,7 +149,7 @@ export class GitHubStore {
   }
 
   async requestGitHubData(): Promise<void> {
-    this.deskThing.sendMessageToParent({
+    this.deskThing.send({
       type: 'get',
       request: 'github_data',
     });
@@ -147,7 +159,7 @@ export class GitHubStore {
     ownerName: string,
     repoName: string
   ): Promise<void> {
-    this.deskThing.sendMessageToParent({
+    this.deskThing.send({
       type: 'get',
       request: 'github_pull_requests',
       payload: {

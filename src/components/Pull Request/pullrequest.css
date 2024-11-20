@@ -1,0 +1,45 @@
+.pull {
+  background-color: var(--surface-200);
+  margin-bottom: 8px;
+  font-size: 20px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  margin-right: 4px;
+}
+
+.pull--details {
+  display: flex;
+  align-items: center;
+}
+
+.pull--details h2 {
+  margin: 0px 8px;
+}
+
+.pull-subDetails {
+  display: flex;
+  margin-top: 4px;
+  margin-left: 36px;
+  font-size: 16px;
+  color: var(--sub-text);
+}
+
+.pull-subDetails p {
+  margin-right: 4px;
+}
+
+.pull--icon {
+  color: gray;
+}
+
+.pull--openIcon {
+  color: #3fb950;
+}
+
+.pull--closedIcon {
+  color: #f85149;
+}
+
+.pull--mergedIcon {
+  color: #ab7df8;
+}
