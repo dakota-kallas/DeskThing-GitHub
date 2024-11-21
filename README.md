@@ -66,7 +66,7 @@ You'll need to set up a GitHub Access Token on your [GitHub Account](https://git
 
 ## Usage
 
-1. Upon starting the loading that app onto your DeskThing, you should get a view of all things sports!
+1. Upon starting the loading that app onto your DeskThing, you should get a view prompting you to configure you Settings.
    - Navigate to `Settings` to enter your desired configuration.
 2. The app will fetch the data for your:
    - User Account
