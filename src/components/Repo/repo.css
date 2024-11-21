@@ -1,15 +1,22 @@
 .repo {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   padding: 8px 16px;
   background-color: var(--surface-200);
   color: var(--text);
   border-radius: 5px;
+  filter: drop-shadow(0px 0px 3px #000000);
 }
 
 .repo--header {
   display: flex;
   align-items: center;
+}
+
+.repo--header button {
+  filter: unset;
+  margin-left: unset;
 }
 
 .repo--repoIcon {
@@ -26,7 +33,7 @@
 .repo--name {
   font-size: 36px;
   font-weight: 600;
-  max-width: 600px;
+  max-width: 520px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -59,11 +66,13 @@
 
 .repo--description {
   font-size: 24px;
+  line-height: 1.5;
   margin: 8px 0px;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  height: calc(24px * 1.5 * 2); /* font-size * line-height * 2 lines */
 }
 
 .repo--actions {
@@ -71,7 +80,7 @@
   margin: 16px 0px;
 }
 
-.repo button {
+.repo--actions button {
   display: flex;
   margin-right: 16px;
   align-items: center;
@@ -83,7 +92,13 @@
   background-color: var(--surface-100);
 }
 
-.repo button .repo--icon {
+.repo--actions button:active {
+  transform: scale(0.99); /* Slightly shrink the button */
+  box-shadow: inset 0px 4px 4px rgba(0, 0, 0, 0.2); /* Add an inset shadow */
+  background-color: var(--surface-150);
+}
+
+.repo--actions button .repo--icon {
   margin-right: 8px;
 }
 

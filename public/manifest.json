@@ -10,7 +10,7 @@
   "version_code": "1.0",
   "compatible_server": ["9"],
   "compatible_client": ["9"],
-  "description": "TBD",
+  "description": "The GitHub app for DeskThing offers seamless management of repositories, pull requests, and issues, helping you stay organized and focused with real-time updates.",
   "author": "Dakota Kallas",
   "platforms": ["linux", "windows", "mac"],
   "repository": "https://github.com/dakota-kallas/DeskThing-GitHub"

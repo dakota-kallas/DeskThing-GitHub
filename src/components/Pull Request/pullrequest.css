@@ -1,0 +1,89 @@
+.pull {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--surface-200);
+  margin-bottom: 8px;
+  font-size: 20px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  margin-right: 20px;
+  overflow: hidden;
+}
+
+.pull--content {
+  flex: 1 1 auto;
+  width: calc(100% - 32px);
+}
+
+.pull--details {
+  display: flex;
+  align-items: center;
+}
+
+.pull--details h2 {
+  margin: 0px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 600px;
+}
+
+.pull--labels {
+  display: flex;
+  overflow: hidden;
+  white-space: nowrap;
+  align-items: center;
+  flex: 1 1 auto;
+}
+
+.pull--label {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 8px;
+  border-radius: 16px;
+  font-size: 12px;
+  border: 1px solid var(--sub-text);
+  color: var(--sub-text);
+}
+
+.pull--labels p:last-child {
+  margin-right: 0px;
+}
+
+.pull-subDetails {
+  display: flex;
+  margin-top: 4px;
+  margin-left: 36px;
+  font-size: 16px;
+  color: var(--sub-text);
+}
+
+.pull-subDetails p {
+  margin-right: 4px;
+}
+
+.pull--icon {
+  color: gray;
+}
+
+.pull--openIcon {
+  color: #3fb950;
+}
+
+.pull--closedIcon {
+  color: #f85149;
+}
+
+.pull--mergedIcon {
+  color: #ab7df8;
+}
+
+.pull--open {
+  color: var(--sub-text);
+}
+
+.pull--open:active {
+  transform: scale(0.99); /* Slightly shrink the button */
+  color: var(--surface-400);
+}

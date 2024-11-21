@@ -4,13 +4,13 @@ button {
 
   border: none;
 }
+
 button:focus {
   outline: none;
-  border: none;
 }
+
 button:active {
   outline: none;
-  border: none;
 }
 
 @tailwind base;
@@ -19,6 +19,7 @@ button:active {
 
 :root {
   --surface-100: #121212;
+  --surface-150: #1a1a1a;
   --surface-200: #282828;
   --surface-300: #3f3f3f;
   --surface-400: #575757;
@@ -27,6 +28,31 @@ button:active {
   --text: white;
   --sub-text: #a7a7a7;
   --text-header: rgb(34, 148, 255);
+  --selected: #f78166;
+}
+
+/* Style the scrollbar */
+::-webkit-scrollbar {
+  width: 12px; /* Width of the scrollbar */
+  height: 12px; /* Height of the scrollbar (for horizontal scroll) */
+}
+
+/* Style the scrollbar track (background) */
+::-webkit-scrollbar-track {
+  background: #2c2c2c; /* Dark background for the track */
+  border-radius: 6px;
+}
+
+/* Style the scrollbar thumb (the draggable part) */
+::-webkit-scrollbar-thumb {
+  background: #555; /* Darker gray for the thumb */
+  border-radius: 10px; /* Rounded corners for the thumb */
+  border-radius: 6px;
+}
+
+/* Style the scrollbar thumb when hovered */
+::-webkit-scrollbar-thumb:hover {
+  background: #888; /* Lighter gray when hovered */
 }
 
 .appContainer {
@@ -36,8 +62,89 @@ button:active {
 
 .contentContainer {
   display: flex;
-  justify-content: center;
-  align-items: start;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
   height: calc(100% - 32px);
   padding: 8px;
+  overflow: hidden;
+}
+
+.validation {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-top: 16px;
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--text);
+}
+
+.validation h1 {
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.validation h2 {
+  font-size: 20px;
+  color: var(--sub-text);
+}
+
+.repoContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-right: 32px;
+  width: calc(100% - 32px);
+  max-width: calc(100% - 32px);
+}
+
+.repoContainer--navigation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.repoContainer--navigation button:first-child {
+  margin-bottom: 48px;
+}
+
+.repoContainer--tabs {
+  margin-top: 12px;
+  border-top: 2px solid var(--surface-500);
+  width: calc(100% - 32px);
+  display: flex;
+}
+
+.repoContainer--filter {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-top: 12px;
+  margin: 0px 16px;
+  font-size: 20px;
+  color: var(--sub-text);
+  padding: 8px 8px;
+  border-top: 3px solid transparent;
+}
+
+.repoContainer--tabs .active {
+  border-top-color: var(--selected);
+  font-weight: 600;
+}
+
+.repoContainer--filter p {
+  margin-left: 8px;
+  color: var(--text);
+}
+
+.repoContainer button {
+  filter: drop-shadow(0px 0px 4px #000000);
+  margin-left: -8px;
+}
+
+.repoContainer button:active {
+  filter: drop-shadow(0px 0px 1px #000000);
 }

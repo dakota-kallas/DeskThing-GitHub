@@ -37,6 +37,32 @@ const start = async () => {
       } else {
         console.warn('Error getting GitHub data');
       }
+    } else if (request.request === 'github_pull_requests') {
+      const ownerName = (request.payload as any)?.ownerName;
+      const repoName = (request.payload as any)?.repoName;
+      DeskThing.sendLog(
+        `Getting GitHub Pull Requests for ${ownerName}/${repoName}`
+      );
+      const pullRequests = await gitHub.getPullRequestsForRepo(
+        ownerName,
+        repoName
+      );
+      DeskThing.sendDataToClient({
+        type: 'github_pull_requests',
+        payload: pullRequests,
+      });
+    } else if (request.request === 'github_issues') {
+      const ownerName = (request.payload as any)?.ownerName;
+      const repoName = (request.payload as any)?.repoName;
+      DeskThing.sendLog(`Getting GitHub Issues for ${ownerName}/${repoName}`);
+      const issues = await gitHub.getIssuesForRepo(ownerName, repoName);
+      DeskThing.sendDataToClient({
+        type: 'github_issues',
+        payload: issues,
+      });
+    } else if (request.request === 'open_url') {
+      DeskThing.sendLog(`Opening URL: ${request.payload}`);
+      DeskThing.openUrl(request.payload as string);
     }
   };
 
@@ -48,29 +74,19 @@ const start = async () => {
 };
 
 const setupSettings = async (settings?: AppSettings) => {
-  let minRefreshInterval = 15;
-
-  if (
-    settings?.gitHubAccessToken?.value &&
-    (settings.gitHubAccessToken.value as string).length > 0
-  ) {
-    minRefreshInterval = 1;
-  }
-
   const refreshInterval: SettingsNumber = {
     label: 'Refresh Interval (minutes)',
-    description:
-      'The amount of minutes between each refresh. (Use a GitHub Access Token to enable a lower refresh interval)',
+    description: 'The amount of minutes between each refresh.',
     type: 'number',
     value: 15,
     max: 60,
-    min: minRefreshInterval,
+    min: 1,
   };
 
   const gitHubAccessToken: SettingsString = {
     label: 'GitHub Access Token',
     description:
-      '(Optional) You API Access Token to allow for a higher rate limit & access to private repositories.',
+      'Your API Access Token to allow for a higher rate limit & access to your repositories. See README in the Repository for more information.',
     type: 'string',
     value: '',
   };

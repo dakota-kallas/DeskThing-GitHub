@@ -1,0 +1,91 @@
+.pulls--container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%; /* Constrain height within parent */
+  color: var(--text);
+  margin-right: 16px;
+  width: calc(100% - 32px);
+}
+
+.pulls--controls {
+  display: flex;
+  align-items: center;
+  padding: 4px 0px 8px 0px;
+  border-bottom: 1px solid var(--surface-400);
+}
+
+.pulls--back {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  margin-right: 32px;
+  padding: 0px 8px 0px 4px;
+  border-radius: 16px;
+  background-color: var(--surface-500);
+  filter: drop-shadow(0px 0px 1px var(--surface-200));
+}
+
+.pulls--back p {
+  margin-left: 4px;
+  font-weight: 600;
+}
+
+.pulls--filter {
+  color: var(--sub-text);
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  margin-right: 8px;
+  padding: 0px 8px 0px 4px;
+}
+
+.pulls--filter:active {
+  color: var(--text);
+}
+
+.pulls--activeFilter {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pulls--filter p {
+  margin-left: 8px;
+}
+
+.pulls {
+  flex: 1; /* Allow .pulls to grow and fill available space */
+  overflow-y: auto; /* Enable vertical scrolling for content inside */
+  padding: 12px 0px;
+  margin-bottom: 2px;
+}
+
+.pulls--backToTop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pulls--backToTop button {
+  display: flex;
+  font-size: 20px;
+  align-items: center;
+  border-radius: 16px;
+  background-color: var(--surface-500);
+  padding: 0px 8px 0px 4px;
+  filter: drop-shadow(0px 0px 1px var(--surface-200));
+  margin-top: 4x;
+  margin-bottom: 24px;
+}
+
+.pulls--back:active,
+.pulls--backToTop button:active {
+  transform: scale(0.99); /* Slightly shrink the button */
+  box-shadow: inset 0px 2px 2px rgba(0, 0, 0, 0.2); /* Add an inset shadow */
+}
+
+.pulls--back p {
+  margin-left: 4px;
+  font-weight: 600;
+}

@@ -1,0 +1,85 @@
+.issue {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--surface-200);
+  margin-bottom: 8px;
+  font-size: 20px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  margin-right: 20px;
+  overflow: hidden;
+}
+
+.issue--content {
+  flex: 1 1 auto;
+  width: calc(100% - 32px);
+}
+
+.issue--details {
+  display: flex;
+  align-items: center;
+}
+
+.issue--details h2 {
+  margin: 0px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 600px;
+}
+
+.issue--labels {
+  display: flex;
+  overflow: hidden;
+  white-space: nowrap;
+  align-items: center;
+  flex: 1 1 auto;
+}
+
+.issue--label {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 8px;
+  border-radius: 16px;
+  font-size: 12px;
+  border: 1px solid var(--sub-text);
+  color: var(--sub-text);
+}
+
+.issue--labels p:last-child {
+  margin-right: 0px;
+}
+
+.issue-subDetails {
+  display: flex;
+  margin-top: 4px;
+  margin-left: 36px;
+  font-size: 16px;
+  color: var(--sub-text);
+}
+
+.issue-subDetails p {
+  margin-right: 4px;
+}
+
+.issue--icon {
+  color: gray;
+}
+
+.issue--openIcon {
+  color: #3fb950;
+}
+
+.issue--closedIcon {
+  color: #ab7df8;
+}
+
+.issue--open {
+  color: var(--sub-text);
+}
+
+.issue--open:active {
+  transform: scale(0.99); /* Slightly shrink the button */
+  color: var(--surface-400);
+}
