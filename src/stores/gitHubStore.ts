@@ -7,6 +7,10 @@ export type GitHubData = {
    */
   myRepositories?: GitHubRepo[];
   /**
+   * Authenticated GitHub User's Starred Repositories
+   */
+  starredRepositories?: GitHubRepo[];
+  /**
    * Last Refreshed Time
    */
   lastUpdated?: string;
@@ -21,14 +25,19 @@ export interface GitHubUser {
 
 export interface GitHubIssue {
   id: number;
+  number: number;
   title: string;
   state: string;
+  stateReason?: 'completed' | 'reopened' | 'not_planned' | null;
   locked: boolean;
-  user: GitHubUser;
-  body: string;
+  draft: boolean;
+  user?: GitHubUser;
+  body?: string | null;
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;
+  url: string;
+  labels: GitHubLabel[];
 }
 
 export interface GitHubRepo {
@@ -71,18 +80,28 @@ export interface GitHubPullRequest {
   baseBranch: string;
   headBranch: string;
   url: string;
+  labels: GitHubLabel[];
+}
+
+export interface GitHubLabel {
+  id: number;
+  name: string;
+  color: string;
 }
 
 type GitHubListener = (gitHubData: GitHubData | null) => void;
 type PullRequestsListener = (pullRequests: GitHubPullRequest[] | null) => void;
+type IssuesListener = (issues: GitHubIssue[] | null) => void;
 
 export class GitHubStore {
   private static instance: GitHubStore | null = null;
   private gitHubData: GitHubData | null = null;
   private pullRequests: GitHubPullRequest[] | null = null;
+  private issues: GitHubIssue[] | null = null;
   private deskThing: DeskThing;
   private listeners: GitHubListener[] = [];
   private pullRequestsListener: PullRequestsListener = () => {};
+  private issuesListener: IssuesListener = () => {};
 
   constructor() {
     this.deskThing = DeskThing.getInstance();
@@ -93,6 +112,9 @@ export class GitHubStore {
       } else if (data.type === 'github_pull_requests') {
         this.pullRequests = data.payload as GitHubPullRequest[];
         this.pullRequestsListener(this.pullRequests);
+      } else if (data.type === 'github_issues') {
+        this.issues = data.payload as GitHubIssue[];
+        this.issuesListener(this.issues);
       }
     });
 
@@ -111,6 +133,14 @@ export class GitHubStore {
 
     return () => {
       this.pullRequestsListener = () => {};
+    };
+  }
+
+  onIssuesRetrieved(method: IssuesListener) {
+    this.issuesListener = method;
+
+    return () => {
+      this.issuesListener = () => {};
     };
   }
 
@@ -145,6 +175,12 @@ export class GitHubStore {
     return this.pullRequests;
   }
 
+  getIssues(ownerName: string, repoName: string): GitHubIssue[] | null {
+    this.requestIssues(ownerName, repoName);
+
+    return this.issues;
+  }
+
   private notifyListeners() {
     if (!this.gitHubData) {
       this.getGitHubData();
@@ -171,6 +207,17 @@ export class GitHubStore {
     this.deskThing.send({
       type: 'get',
       request: 'github_pull_requests',
+      payload: {
+        ownerName,
+        repoName,
+      },
+    });
+  }
+
+  async requestIssues(ownerName: string, repoName: string): Promise<void> {
+    this.deskThing.send({
+      type: 'get',
+      request: 'github_issues',
       payload: {
         ownerName,
         repoName,

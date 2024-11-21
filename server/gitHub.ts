@@ -3,6 +3,7 @@ import { DataInterface } from 'deskthing-server';
 import {
   GitHubData,
   GitHubIssue,
+  GitHubLabel,
   GitHubPullRequest,
   GitHubRepo,
   GitHubUser,
@@ -18,8 +19,11 @@ class GitHubService {
   private refreshInterval: number = 5;
   private gitHubAccessToken: string | null = null;
   private repoRequestEtag: string | null = null;
+  private starredReposRequestEtag: string | null = null;
   private pullRequestRequestEtags: { [key: string]: string | null } = {};
+  private issueRequestEtags: { [key: string]: string | null } = {};
   private pullRequests: { [key: string]: GitHubPullRequest[] } = {};
+  private issues: { [key: string]: GitHubIssue[] } = {};
 
   constructor() {
     this.deskthing = DeskThing;
@@ -128,46 +132,29 @@ class GitHubService {
 
       this.repoRequestEtag = headers.etag ?? null;
 
-      const myRepos: GitHubRepo[] = [];
+      this.gitHubData.myRepositories = await this.getReposFromData(data);
 
-      for (const repo of data) {
-        const user: GitHubUser = {
-          id: repo.owner.id,
-          username: repo.owner.login,
-          avatarUrl: await this.deskthing.encodeImageFromUrl(
-            repo.owner.avatar_url
-          ),
-          url: repo.owner.html_url,
-        };
-
-        const myRepo: GitHubRepo = {
-          id: repo.id,
-          fullName: repo.full_name,
-          name: repo.name,
-          description: repo.description,
-          stars: repo.stargazers_count,
-          watchers: repo.watchers_count,
-          forks: repo.forks_count,
-          defaultBranch: repo.default_branch,
-          updatedAt: repo.updated_at,
-          createdAt: repo.created_at,
-          pushedAt: repo.pushed_at,
-          language: repo.language,
-          archived: repo.archived,
-          disabled: repo.disabled,
-          visibility: repo.visibility,
-          openIssues: repo.open_issues_count,
-          private: repo.private,
-          fork: repo.fork,
-          size: repo.size,
-          url: repo.html_url,
-          owner: user,
-        };
-
-        myRepos.push(myRepo);
+      const starredRequestHeaders: Record<string, string> = {};
+      if (this.starredReposRequestEtag) {
+        starredRequestHeaders['If-None-Match'] = this.starredReposRequestEtag;
       }
 
-      this.gitHubData.myRepositories = myRepos;
+      const { data: starredData, headers: starredHeaders } =
+        await octokit.repos.listForAuthenticatedUser({
+          per_page: 100,
+          headers: starredRequestHeaders,
+        });
+
+      if (starredHeaders['x-ratelimit-remaining'] === '0') {
+        this.deskthing.sendLog('Rate limit reached');
+        return;
+      }
+
+      this.starredReposRequestEtag = headers.etag ?? null;
+
+      this.gitHubData.starredRepositories = await this.getReposFromData(
+        starredData
+      );
     } catch (error) {
       if (error.status && error.status == 304) {
         this.deskthing.sendLog(`No updates to Repositories`);
@@ -175,6 +162,49 @@ class GitHubService {
       }
       this.deskthing.sendLog('Error fetching repositories: ' + error);
     }
+  }
+
+  private async getReposFromData(data: any): Promise<GitHubRepo[]> {
+    const repos: GitHubRepo[] = [];
+
+    for (const repo of data) {
+      const user: GitHubUser = {
+        id: repo.owner.id,
+        username: repo.owner.login,
+        avatarUrl: await this.deskthing.encodeImageFromUrl(
+          repo.owner.avatar_url
+        ),
+        url: repo.owner.html_url,
+      };
+
+      const myRepo: GitHubRepo = {
+        id: repo.id,
+        fullName: repo.full_name,
+        name: repo.name,
+        description: repo.description,
+        stars: repo.stargazers_count,
+        watchers: repo.watchers_count,
+        forks: repo.forks_count,
+        defaultBranch: repo.default_branch,
+        updatedAt: repo.updated_at,
+        createdAt: repo.created_at,
+        pushedAt: repo.pushed_at,
+        language: repo.language,
+        archived: repo.archived,
+        disabled: repo.disabled,
+        visibility: repo.visibility,
+        openIssues: repo.open_issues_count,
+        private: repo.private,
+        fork: repo.fork,
+        size: repo.size,
+        url: repo.html_url,
+        owner: user,
+      };
+
+      repos.push(myRepo);
+    }
+
+    return repos;
   }
 
   public async getPullRequestsForRepo(ownerName: string, repoName: string) {
@@ -223,7 +253,17 @@ class GitHubService {
           baseBranch: pull.base.label,
           headBranch: pull.head.label,
           url: pull.html_url,
+          labels: [],
         };
+
+        pull.labels.forEach((label) => {
+          const gitHubLabel: GitHubLabel = {
+            id: label.id,
+            name: label.name,
+            color: label.color,
+          };
+          pullRequest.labels.push(gitHubLabel);
+        });
 
         if (pull.user) {
           const user: GitHubUser = {
@@ -250,6 +290,97 @@ class GitHubService {
         return this.pullRequests[`${ownerName}/${repoName}`];
       }
       this.deskthing.sendError(`Error fetching pull requests: ${error}`);
+      return undefined;
+    }
+  }
+
+  public async getIssuesForRepo(ownerName: string, repoName: string) {
+    try {
+      const octokit = new Octokit({
+        auth: this.gitHubAccessToken || '',
+      });
+
+      const requestHeaders: Record<string, string> = {};
+      if (this.issueRequestEtags[`${ownerName}/${repoName}`]) {
+        requestHeaders['If-None-Match'] =
+          this.issueRequestEtags[`${ownerName}/${repoName}`]!;
+      }
+
+      const { headers, data } = await octokit.issues.list({
+        headers: requestHeaders,
+        owner: ownerName,
+        repo: repoName,
+        state: 'all',
+        per_page: 100,
+      });
+
+      if (headers['x-ratelimit-remaining'] === '0') {
+        this.deskthing.sendLog('Rate limit reached');
+        return;
+      }
+
+      this.issueRequestEtags[`${ownerName}/${repoName}`] = headers.etag ?? null;
+
+      const issues: GitHubIssue[] = [];
+
+      data.forEach((currentIssue) => {
+        const issue: GitHubIssue = {
+          id: currentIssue.id,
+          number: currentIssue.number,
+          title: currentIssue.title,
+          state: currentIssue.state,
+          stateReason: currentIssue.state_reason,
+          body: currentIssue.body,
+          locked: currentIssue.locked,
+          draft: currentIssue.draft ?? false,
+          createdAt: currentIssue.created_at,
+          updatedAt: currentIssue.updated_at,
+          closedAt: currentIssue.closed_at,
+          url: currentIssue.html_url,
+          labels: [],
+        };
+
+        currentIssue.labels.forEach((label) => {
+          if (
+            typeof label !== 'string' &&
+            label.id &&
+            label.name &&
+            label.color
+          ) {
+            const gitHubLabel: GitHubLabel = {
+              id: label.id,
+              name: label.name,
+              color: label.color,
+            };
+            issue.labels.push(gitHubLabel);
+          }
+        });
+
+        if (currentIssue.user) {
+          const user: GitHubUser = {
+            id: currentIssue.user.id,
+            username: currentIssue.user.login,
+            avatarUrl: currentIssue.user.avatar_url,
+            url: currentIssue.user.html_url,
+          };
+
+          issue.user = user;
+        }
+
+        issues.push(issue);
+      });
+
+      this.issues[`${ownerName}/${repoName}`] = issues;
+
+      return issues;
+    } catch (error) {
+      if (error.status && error.status == 304) {
+        this.deskthing.sendLog(
+          `No updates to Issues for ${ownerName}/${repoName}`
+        );
+        return this.issues[`${ownerName}/${repoName}`];
+      }
+      this.deskthing.sendError(`Error fetching issues: ${error}`);
       return undefined;
     }
   }

@@ -25,10 +25,25 @@ const PullRequest = ({ pullRequest, onOpenClick }: PullRequestProps) => {
 
   return (
     <div className='pull'>
-      <div>
+      <div className='pull--content'>
         <div className='pull--details'>
           {getIcon()}
           <h2>{pullRequest.title}</h2>
+          <div className='pull--labels'>
+            {pullRequest.labels?.map((label) => (
+              <p
+                className='pull--label'
+                key={label.id}
+                style={{
+                  color: `#${label.color}`,
+                  borderColor: `#${label.color}`,
+                  backgroundColor: `#${label.color}2A`,
+                }}
+              >
+                {label.name}
+              </p>
+            ))}
+          </div>
         </div>
         <div className='pull-subDetails'>
           <p>#{pullRequest.number}</p>

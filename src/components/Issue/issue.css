@@ -1,4 +1,4 @@
-.pull {
+.issue {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -11,17 +11,17 @@
   overflow: hidden;
 }
 
-.pull--content {
+.issue--content {
   flex: 1 1 auto;
   width: calc(100% - 32px);
 }
 
-.pull--details {
+.issue--details {
   display: flex;
   align-items: center;
 }
 
-.pull--details h2 {
+.issue--details h2 {
   margin: 0px 8px;
   white-space: nowrap;
   overflow: hidden;
@@ -29,7 +29,7 @@
   max-width: 600px;
 }
 
-.pull--labels {
+.issue--labels {
   display: flex;
   overflow: hidden;
   white-space: nowrap;
@@ -37,7 +37,7 @@
   flex: 1 1 auto;
 }
 
-.pull--label {
+.issue--label {
   display: inline-block;
   margin-right: 8px;
   padding: 1px 8px;
@@ -47,11 +47,11 @@
   color: var(--sub-text);
 }
 
-.pull--labels p:last-child {
+.issue--labels p:last-child {
   margin-right: 0px;
 }
 
-.pull-subDetails {
+.issue-subDetails {
   display: flex;
   margin-top: 4px;
   margin-left: 36px;
@@ -59,31 +59,27 @@
   color: var(--sub-text);
 }
 
-.pull-subDetails p {
+.issue-subDetails p {
   margin-right: 4px;
 }
 
-.pull--icon {
+.issue--icon {
   color: gray;
 }
 
-.pull--openIcon {
+.issue--openIcon {
   color: #3fb950;
 }
 
-.pull--closedIcon {
-  color: #f85149;
-}
-
-.pull--mergedIcon {
+.issue--closedIcon {
   color: #ab7df8;
 }
 
-.pull--open {
+.issue--open {
   color: var(--sub-text);
 }
 
-.pull--open:active {
+.issue--open:active {
   transform: scale(0.99); /* Slightly shrink the button */
   color: var(--surface-400);
 }

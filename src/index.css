@@ -4,14 +4,6 @@ button {
 
   border: none;
 }
-button:focus {
-  outline: none;
-  border: none;
-}
-button:active {
-  outline: none;
-  border: none;
-}
 
 @tailwind base;
 @tailwind components;
@@ -61,8 +53,9 @@ button:active {
 
 .contentContainer {
   display: flex;
-  justify-content: center;
-  align-items: start;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
   height: calc(100% - 32px);
   padding: 8px;
   overflow: hidden;
@@ -72,8 +65,8 @@ button:active {
   display: flex;
   justify-content: center;
   align-items: center;
-  flex: 1 1 auto;
   margin-right: 32px;
+  width: calc(100% - 32px);
 }
 
 .repoContainer--navigation {
@@ -85,6 +78,35 @@ button:active {
 
 .repoContainer--navigation button:first-child {
   margin-bottom: 48px;
+}
+
+.repoContainer--tabs {
+  margin-top: 12px;
+  border-top: 2px solid var(--surface-500);
+  width: calc(100% - 32px);
+  display: flex;
+}
+
+.repoContainer--filter {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-top: 12px;
+  margin: 0px 16px;
+  font-size: 20px;
+  color: var(--sub-text);
+  padding: 8px 8px;
+  border-top: 3px solid transparent;
+}
+
+.repoContainer--tabs .active {
+  border-top-color: var(--text-header);
+  font-weight: 600;
+}
+
+.repoContainer--filter p {
+  margin-left: 8px;
+  color: var(--text);
 }
 
 .repoContainer button {

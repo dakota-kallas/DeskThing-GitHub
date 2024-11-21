@@ -1,6 +1,5 @@
 import './repo.css';
 import { GitHubRepo } from '../../stores/gitHubStore';
-import { useEffect, useRef, useState } from 'react';
 import {
   EyeIcon,
   GitPullRequestIcon,
@@ -13,35 +12,12 @@ import {
 interface RepoProps {
   repo: GitHubRepo;
   onPullRequestsClick: () => void;
+  onIssuesClick: () => void;
 }
 
-const Repo = ({ repo, onPullRequestsClick }: RepoProps) => {
-  const [isTallEnough, setIsTallEnough] = useState(false);
-  const contentContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const container = contentContainerRef.current;
-    if (!container) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (let entry of entries) {
-        if (entry.target === container) {
-          setIsTallEnough(entry.contentRect.height > 400);
-        }
-      }
-    });
-
-    resizeObserver.observe(container);
-
-    // Cleanup observer on component unmount
-    return () => {
-      resizeObserver.unobserve(container);
-      resizeObserver.disconnect();
-    };
-  }, [contentContainerRef.current]);
-
+const Repo = ({ repo, onPullRequestsClick, onIssuesClick }: RepoProps) => {
   return (
-    <div className='repo' ref={contentContainerRef}>
+    <div className='repo'>
       <div className='repo--header'>
         <RepoIcon size={30} className='repo--repoIcon' />
         <h2 className='repo--name'>{repo.name}</h2>
@@ -59,7 +35,7 @@ const Repo = ({ repo, onPullRequestsClick }: RepoProps) => {
         <p className='repo--description'>{repo.description}</p>
       </div>
       <div className='repo--actions'>
-        <button>
+        <button onClick={onIssuesClick}>
           <IssueOpenedIcon size={14} className='repo--icon' />
           View Issues
         </button>

@@ -38,14 +38,27 @@ const start = async () => {
         console.warn('Error getting GitHub data');
       }
     } else if (request.request === 'github_pull_requests') {
-      DeskThing.sendLog('Getting GitHub Pull Requests');
+      const ownerName = (request.payload as any)?.ownerName;
+      const repoName = (request.payload as any)?.repoName;
+      DeskThing.sendLog(
+        `Getting GitHub Pull Requests for ${ownerName}/${repoName}`
+      );
       const pullRequests = await gitHub.getPullRequestsForRepo(
-        (request.payload as any)?.ownerName,
-        (request.payload as any)?.repoName
+        ownerName,
+        repoName
       );
       DeskThing.sendDataToClient({
         type: 'github_pull_requests',
         payload: pullRequests,
+      });
+    } else if (request.request === 'github_issues') {
+      const ownerName = (request.payload as any)?.ownerName;
+      const repoName = (request.payload as any)?.repoName;
+      DeskThing.sendLog(`Getting GitHub Issues for ${ownerName}/${repoName}`);
+      const issues = await gitHub.getIssuesForRepo(ownerName, repoName);
+      DeskThing.sendDataToClient({
+        type: 'github_issues',
+        payload: issues,
       });
     } else if (request.request === 'open_url') {
       DeskThing.sendLog(`Opening URL: ${request.payload}`);
