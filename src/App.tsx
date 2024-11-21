@@ -42,6 +42,28 @@ const App: React.FC = () => {
   }, [filter]);
 
   useEffect(() => {
+    if (filter === 'repos') {
+      setCurrentRepos(gitHubData?.myRepositories);
+      if (
+        !gitHubData?.myRepositories ||
+        currentRepoIndex >= gitHubData.myRepositories.length
+      ) {
+        setCurrentRepoIndex(0);
+      }
+    }
+    if (filter === 'stars') {
+      setCurrentRepos(gitHubData?.starredRepositories);
+      setCurrentRepos(gitHubData?.starredRepositories);
+      if (
+        !gitHubData?.starredRepositories ||
+        currentRepoIndex >= gitHubData.starredRepositories.length
+      ) {
+        setCurrentRepoIndex(0);
+      }
+    }
+  }, [gitHubData]);
+
+  useEffect(() => {
     const container = contentContainerRef.current;
     if (!container) return;
 

@@ -20,6 +20,7 @@ button {
   --text: white;
   --sub-text: #a7a7a7;
   --text-header: rgb(34, 148, 255);
+  --selected: #f78166;
 }
 
 /* Style the scrollbar */
@@ -100,7 +101,7 @@ button {
 }
 
 .repoContainer--tabs .active {
-  border-top-color: var(--text-header);
+  border-top-color: var(--selected);
   font-weight: 600;
 }
 
