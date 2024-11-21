@@ -1,5 +1,5 @@
 import { GitHubRepo } from '../../stores/gitHubStore';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { GrFormNext, GrFormPrevious } from 'react-icons/gr';
 import Repo from '../Repo/Repo';
 
