@@ -2,6 +2,7 @@ import { GitHubRepo } from '../../stores/gitHubStore';
 import { useEffect, useRef } from 'react';
 import { GrFormNext, GrFormPrevious } from 'react-icons/gr';
 import Repo from '../Repo/Repo';
+import { GitHubStore } from '../../stores';
 
 interface RepoViewerProps {
   repos?: GitHubRepo[];
@@ -18,6 +19,7 @@ const RepoViewer = ({
   currentRepoIndex,
   setCurrentRepoIndex,
 }: RepoViewerProps) => {
+  const gitHubStore = GitHubStore;
   const repoContainerRef = useRef<HTMLDivElement | null>(null);
 
   const atStart = repos && currentRepoIndex === 0;
@@ -53,6 +55,10 @@ const RepoViewer = ({
     setCurrentRepoIndex((prev) => prev - 1);
   }
 
+  function handleRepoClick(url: string) {
+    gitHubStore.openURL(url);
+  }
+
   return (
     <div className='repoContainer' ref={repoContainerRef}>
       {/* Previous Button */}
@@ -77,6 +83,9 @@ const RepoViewer = ({
       {currentRepo && (
         <Repo
           repo={currentRepo}
+          onRepoClick={() => {
+            handleRepoClick(currentRepo.url);
+          }}
           onPullRequestsClick={() => {
             handleViewPullRequestsClick(
               currentRepo.owner.username,

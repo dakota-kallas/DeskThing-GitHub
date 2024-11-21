@@ -5,6 +5,14 @@ button {
   border: none;
 }
 
+button:focus {
+  outline: none;
+}
+
+button:active {
+  outline: none;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -89,6 +97,7 @@ button {
   align-items: center;
   margin-right: 32px;
   width: calc(100% - 32px);
+  max-width: calc(100% - 32px);
 }
 
 .repoContainer--navigation {

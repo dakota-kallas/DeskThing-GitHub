@@ -76,8 +76,7 @@ const start = async () => {
 const setupSettings = async (settings?: AppSettings) => {
   const refreshInterval: SettingsNumber = {
     label: 'Refresh Interval (minutes)',
-    description:
-      'The amount of minutes between each refresh. (Use a GitHub Access Token to enable a lower refresh interval)',
+    description: 'The amount of minutes between each refresh.',
     type: 'number',
     value: 15,
     max: 60,
@@ -87,7 +86,7 @@ const setupSettings = async (settings?: AppSettings) => {
   const gitHubAccessToken: SettingsString = {
     label: 'GitHub Access Token',
     description:
-      '(Optional) You API Access Token to allow for a higher rate limit & access to private repositories.',
+      'Your API Access Token to allow for a higher rate limit & access to your repositories. See README in the Repository for more information.',
     type: 'string',
     value: '',
   };

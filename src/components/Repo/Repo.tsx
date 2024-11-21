@@ -13,14 +13,22 @@ interface RepoProps {
   repo: GitHubRepo;
   onPullRequestsClick: () => void;
   onIssuesClick: () => void;
+  onRepoClick: () => void;
 }
 
-const Repo = ({ repo, onPullRequestsClick, onIssuesClick }: RepoProps) => {
+const Repo = ({
+  repo,
+  onPullRequestsClick,
+  onIssuesClick,
+  onRepoClick,
+}: RepoProps) => {
   return (
     <div className='repo'>
       <div className='repo--header'>
         <RepoIcon size={30} className='repo--repoIcon' />
-        <h2 className='repo--name'>{repo.name}</h2>
+        <button onClick={onRepoClick}>
+          <h2 className='repo--name'>{repo.name}</h2>
+        </button>
         <p className='repo--visibility'>{repo.visibility}</p>
       </div>
       <div className='repo--owner'>

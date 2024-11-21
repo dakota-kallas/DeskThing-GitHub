@@ -135,7 +135,11 @@ const App: React.FC = () => {
 
   function getContent() {
     if (!gitHubData) {
-      return <div>Loading...</div>;
+      return (
+        <div className='validation'>
+          <h2>Loading...</h2>
+        </div>
+      );
     }
 
     if (!gitHubData.user) {
