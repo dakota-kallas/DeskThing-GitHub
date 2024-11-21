@@ -6,6 +6,7 @@
   height: 100%; /* Constrain height within parent */
   color: var(--text);
   margin-right: 16px;
+  width: calc(100% - 32px);
 }
 
 .issues--controls {

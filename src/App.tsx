@@ -4,29 +4,42 @@ import {
   GitHubData,
   GitHubIssue,
   GitHubPullRequest,
+  GitHubRepo,
 } from './stores/gitHubStore';
 import Header from './components/Header/Header';
-import Repo from './components/Repo/Repo';
-import { GrFormNext, GrFormPrevious } from 'react-icons/gr';
 import PullRequests from './components/Pull Requests/PullRequests';
 import Issues from './components/Issues/Issues';
 import { RepoIcon, StarIcon } from '@primer/octicons-react';
+import RepoViewer from './components/RepoViewer/RepoViewer';
 
 const App: React.FC = () => {
   const gitHubStore = GitHubStore;
   const [gitHubData, setGitHubData] = useState<GitHubData | null>(
     gitHubStore.getGitHubData()
   );
+  const [currentRepos, setCurrentRepos] = useState<GitHubRepo[] | undefined>(
+    gitHubData?.myRepositories
+  );
   const [currentRepoIndex, setCurrentRepoIndex] = useState(0);
   const [pullRequests, setPullRequests] = useState<GitHubPullRequest[] | null>(
     null
   );
   const [issues, setIssues] = useState<GitHubIssue[] | null>(null);
-  const repoContainerRef = useRef<HTMLDivElement | null>(null);
   const [filter, setFilter] = useState<'repos' | 'stars'>('repos');
   const [isTallEnough, setIsTallEnough] = useState(false);
 
   const contentContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (filter === 'repos') {
+      setCurrentRepos(gitHubData?.myRepositories);
+      setCurrentRepoIndex(0);
+    }
+    if (filter === 'stars') {
+      setCurrentRepos(gitHubData?.starredRepositories);
+      setCurrentRepoIndex(0);
+    }
+  }, [filter]);
 
   useEffect(() => {
     const container = contentContainerRef.current;
@@ -48,36 +61,6 @@ const App: React.FC = () => {
       resizeObserver.disconnect();
     };
   }, [contentContainerRef.current]);
-
-  const atStart = currentRepoIndex === 0;
-  const atEnd =
-    gitHubData?.myRepositories &&
-    currentRepoIndex === gitHubData.myRepositories.length - 1;
-  const hasRepositories =
-    gitHubData?.myRepositories && gitHubData?.myRepositories?.length > 0;
-  const currentRepo = hasRepositories
-    ? gitHubData.myRepositories![currentRepoIndex]
-    : null;
-
-  useEffect(() => {
-    const handleScroll = (event: WheelEvent) => {
-      if (event.deltaX !== 0 && repoContainerRef.current) {
-        event.preventDefault();
-        console.log('Scrolling horizontally:', event.deltaX, atStart, atEnd);
-        if (event.deltaX > 0 && !atEnd) {
-          setCurrentRepoIndex((prev) => prev + 1);
-        } else if (event.deltaX < 0 && !atStart) {
-          setCurrentRepoIndex((prev) => prev - 1);
-        }
-      }
-    };
-
-    document?.addEventListener('wheel', handleScroll, { passive: false });
-
-    return () => {
-      document?.removeEventListener('wheel', handleScroll);
-    };
-  }, [atEnd, atStart]);
 
   useEffect(() => {
     const handleGitHubData = async (data: GitHubData | null) => {
@@ -109,32 +92,17 @@ const App: React.FC = () => {
     };
   }, []);
 
-  function handleNextClick() {
-    setCurrentRepoIndex((prev) => prev + 1);
-  }
-
-  function handlePreviousClick() {
-    setCurrentRepoIndex((prev) => prev - 1);
-  }
-
   function handleBackClick() {
     setPullRequests(null);
     setIssues(null);
   }
 
-  function handleViewPullRequestsClick() {
-    const repo = gitHubData!.myRepositories![currentRepoIndex];
-    gitHubStore.getPullRequests(repo.owner.username, repo.name);
+  function handleViewPullRequestsClick(ownerName: string, repoName: string) {
+    gitHubStore.getPullRequests(ownerName, repoName);
   }
 
-  function handleViewIssuesClick() {
-    const repo = gitHubData!.myRepositories![currentRepoIndex];
-    gitHubStore.getIssues(repo.owner.username, repo.name);
-  }
-
-  function handleTabClick(tab: 'repos' | 'stars') {
-    setFilter(tab);
-    setCurrentRepoIndex(0);
+  function handleViewIssuesClick(ownerName: string, repoName: string) {
+    gitHubStore.getIssues(ownerName, repoName);
   }
 
   return (
@@ -142,37 +110,15 @@ const App: React.FC = () => {
       <Header lastUpdated={gitHubData?.lastUpdated} />
       <div className='contentContainer' ref={contentContainerRef}>
         {(!pullRequests || pullRequests.length == 0) &&
-          (!issues || issues.length == 0) &&
-          hasRepositories && (
+          (!issues || issues.length == 0) && (
             <>
-              <div className='repoContainer' ref={repoContainerRef}>
-                {/* Previous Button */}
-                <div className='repoContainer--navigation'>
-                  <button
-                    onClick={handlePreviousClick}
-                    className={`navigationButton ${atStart ? 'invisible' : ''}`}
-                    disabled={atStart}
-                  >
-                    <GrFormPrevious size={48} color='var(--text)' />
-                  </button>
-                  <button
-                    onClick={handleNextClick}
-                    className={`navigationButton ${atEnd ? 'invisible' : ''}`}
-                    disabled={atEnd}
-                  >
-                    <GrFormNext size={48} color='var(--text)' />
-                  </button>
-                </div>
-
-                {/* Current Repository */}
-                {currentRepo && (
-                  <Repo
-                    repo={currentRepo}
-                    onPullRequestsClick={handleViewPullRequestsClick}
-                    onIssuesClick={handleViewIssuesClick}
-                  />
-                )}
-              </div>
+              <RepoViewer
+                repos={currentRepos}
+                currentRepoIndex={currentRepoIndex}
+                setCurrentRepoIndex={setCurrentRepoIndex}
+                handleViewIssuesClick={handleViewIssuesClick}
+                handleViewPullRequestsClick={handleViewPullRequestsClick}
+              />
               {isTallEnough && (
                 <div className='repoContainer--tabs'>
                   <button

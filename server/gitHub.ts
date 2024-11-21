@@ -18,12 +18,19 @@ class GitHubService {
   private static instance: GitHubService | null = null;
   private refreshInterval: number = 5;
   private gitHubAccessToken: string | null = null;
+
   private repoRequestEtag: string | null = null;
   private starredReposRequestEtag: string | null = null;
-  private pullRequestRequestEtags: { [key: string]: string | null } = {};
-  private issueRequestEtags: { [key: string]: string | null } = {};
-  private pullRequests: { [key: string]: GitHubPullRequest[] } = {};
-  private issues: { [key: string]: GitHubIssue[] } = {};
+
+  private openPullRequestRequestEtagStore: Record<string, string | null> = {};
+  private closedPullRequestRequestEtagStore: Record<string, string | null> = {};
+  private openPullRequestStore: Record<string, GitHubPullRequest[]> = {};
+  private closedPullRequestStore: Record<string, GitHubPullRequest[]> = {};
+
+  private openIssueRequestEtagStore: Record<string, string | null> = {};
+  private closedIssueRequestEtagStore: Record<string, string | null> = {};
+  private openIssueStore: Record<string, GitHubIssue[]> = {};
+  private closedIssueStore: Record<string, GitHubIssue[]> = {};
 
   constructor() {
     this.deskthing = DeskThing;
@@ -133,14 +140,22 @@ class GitHubService {
       this.repoRequestEtag = headers.etag ?? null;
 
       this.gitHubData.myRepositories = await this.getReposFromData(data);
+    } catch (error) {
+      if (error.status && error.status == 304) {
+        this.deskthing.sendLog(`No updates to Repositories`);
+        return;
+      }
+      this.deskthing.sendLog('Error fetching Repositories: ' + error);
+    }
 
+    try {
       const starredRequestHeaders: Record<string, string> = {};
       if (this.starredReposRequestEtag) {
         starredRequestHeaders['If-None-Match'] = this.starredReposRequestEtag;
       }
 
       const { data: starredData, headers: starredHeaders } =
-        await octokit.repos.listForAuthenticatedUser({
+        await octokit.rest.activity.listReposStarredByAuthenticatedUser({
           per_page: 100,
           headers: starredRequestHeaders,
         });
@@ -150,17 +165,17 @@ class GitHubService {
         return;
       }
 
-      this.starredReposRequestEtag = headers.etag ?? null;
+      this.starredReposRequestEtag = starredHeaders.etag ?? null;
 
       this.gitHubData.starredRepositories = await this.getReposFromData(
         starredData
       );
     } catch (error) {
       if (error.status && error.status == 304) {
-        this.deskthing.sendLog(`No updates to Repositories`);
+        this.deskthing.sendLog(`No updates to Starred Repositories`);
         return;
       }
-      this.deskthing.sendLog('Error fetching repositories: ' + error);
+      this.deskthing.sendLog('Error fetching Starred Repositories: ' + error);
     }
   }
 
@@ -208,37 +223,93 @@ class GitHubService {
   }
 
   public async getPullRequestsForRepo(ownerName: string, repoName: string) {
-    try {
-      const octokit = new Octokit({
-        auth: this.gitHubAccessToken || '',
-      });
+    const octokit = new Octokit({
+      auth: this.gitHubAccessToken || '',
+    });
 
+    const fetchPullRequests = async (
+      state: 'open' | 'closed',
+      etagStore: Record<string, string | null>,
+      cacheStore: Record<string, GitHubPullRequest[]>
+    ): Promise<GitHubPullRequest[]> => {
       const requestHeaders: Record<string, string> = {};
-      if (this.pullRequestRequestEtags[`${ownerName}/${repoName}`]) {
-        requestHeaders['If-None-Match'] =
-          this.pullRequestRequestEtags[`${ownerName}/${repoName}`]!;
+      const cacheKey = `${ownerName}/${repoName}`;
+      if (etagStore[cacheKey]) {
+        requestHeaders['If-None-Match'] = etagStore[cacheKey]!;
       }
 
-      const { headers, data } = await octokit.pulls.list({
-        headers: requestHeaders,
-        owner: ownerName,
-        repo: repoName,
-        state: 'all',
-        per_page: 100,
-      });
+      try {
+        const { headers, data } = await octokit.pulls.list({
+          headers: requestHeaders,
+          owner: ownerName,
+          repo: repoName,
+          state,
+          per_page: 100,
+        });
 
-      if (headers['x-ratelimit-remaining'] === '0') {
-        this.deskthing.sendLog('Rate limit reached');
-        return;
+        if (headers['x-ratelimit-remaining'] === '0') {
+          this.deskthing.sendLog('Rate limit reached');
+          return [];
+        }
+
+        etagStore[cacheKey] = headers.etag ?? null;
+        const pullRequests = await this.getPullRequestFromData(data);
+        cacheStore[cacheKey] = pullRequests;
+        return pullRequests;
+      } catch (error) {
+        if (error.status === 304) {
+          this.deskthing.sendLog(
+            `No updates to ${state} Pull Requests for ${cacheKey}`
+          );
+          return cacheStore[cacheKey] || [];
+        } else {
+          this.deskthing.sendError(
+            `Error fetching ${state} Pull Requests: ${error}`
+          );
+          return [];
+        }
       }
+    };
 
-      this.pullRequestRequestEtags[`${ownerName}/${repoName}`] =
-        headers.etag ?? null;
+    const [openPullRequests, closedPullRequests] = await Promise.all([
+      fetchPullRequests(
+        'open',
+        this.openPullRequestRequestEtagStore,
+        this.openPullRequestStore
+      ),
+      fetchPullRequests(
+        'closed',
+        this.closedPullRequestRequestEtagStore,
+        this.closedPullRequestStore
+      ),
+    ]);
 
-      const pullRequests: GitHubPullRequest[] = [];
+    return [...openPullRequests, ...closedPullRequests];
+  }
 
-      data.forEach((pull) => {
-        const pullRequest: GitHubPullRequest = {
+  private async getPullRequestFromData(
+    data: any
+  ): Promise<GitHubPullRequest[]> {
+    return Promise.all(
+      data.map(async (pull) => {
+        const labels = pull.labels.map((label) => ({
+          id: label.id,
+          name: label.name,
+          color: label.color,
+        }));
+
+        const user = pull.user
+          ? {
+              id: pull.user.id,
+              username: pull.user.login,
+              avatarUrl: await this.deskthing.encodeImageFromUrl(
+                pull.user.avatar_url
+              ),
+              url: pull.user.html_url,
+            }
+          : null;
+
+        return {
           id: pull.id,
           number: pull.number,
           title: pull.title,
@@ -253,78 +324,96 @@ class GitHubService {
           baseBranch: pull.base.label,
           headBranch: pull.head.label,
           url: pull.html_url,
-          labels: [],
+          labels,
+          user,
         };
-
-        pull.labels.forEach((label) => {
-          const gitHubLabel: GitHubLabel = {
-            id: label.id,
-            name: label.name,
-            color: label.color,
-          };
-          pullRequest.labels.push(gitHubLabel);
-        });
-
-        if (pull.user) {
-          const user: GitHubUser = {
-            id: pull.user.id,
-            username: pull.user.login,
-            avatarUrl: pull.user.avatar_url,
-            url: pull.user.html_url,
-          };
-
-          pullRequest.user = user;
-        }
-
-        pullRequests.push(pullRequest);
-      });
-
-      this.pullRequests[`${ownerName}/${repoName}`] = pullRequests;
-
-      return pullRequests;
-    } catch (error) {
-      if (error.status && error.status == 304) {
-        this.deskthing.sendLog(
-          `No updates to Pull Requests for ${ownerName}/${repoName}`
-        );
-        return this.pullRequests[`${ownerName}/${repoName}`];
-      }
-      this.deskthing.sendError(`Error fetching pull requests: ${error}`);
-      return undefined;
-    }
+      })
+    );
   }
 
   public async getIssuesForRepo(ownerName: string, repoName: string) {
-    try {
-      const octokit = new Octokit({
-        auth: this.gitHubAccessToken || '',
-      });
+    const octokit = new Octokit({
+      auth: this.gitHubAccessToken || '',
+    });
 
+    const fetchIssues = async (
+      state: 'open' | 'closed',
+      etagStore: Record<string, string | null>,
+      cacheStore: Record<string, GitHubIssue[]>
+    ): Promise<GitHubIssue[]> => {
       const requestHeaders: Record<string, string> = {};
-      if (this.issueRequestEtags[`${ownerName}/${repoName}`]) {
-        requestHeaders['If-None-Match'] =
-          this.issueRequestEtags[`${ownerName}/${repoName}`]!;
+      const cacheKey = `${ownerName}/${repoName}`;
+      if (etagStore[cacheKey]) {
+        requestHeaders['If-None-Match'] = etagStore[cacheKey]!;
       }
 
-      const { headers, data } = await octokit.issues.list({
-        headers: requestHeaders,
-        owner: ownerName,
-        repo: repoName,
-        state: 'all',
-        per_page: 100,
-      });
+      try {
+        const { headers, data } = await octokit.issues.listForRepo({
+          headers: requestHeaders,
+          owner: ownerName,
+          repo: repoName,
+          state,
+          per_page: 100,
+        });
 
-      if (headers['x-ratelimit-remaining'] === '0') {
-        this.deskthing.sendLog('Rate limit reached');
-        return;
+        if (headers['x-ratelimit-remaining'] === '0') {
+          this.deskthing.sendLog('Rate limit reached');
+          return [];
+        }
+
+        etagStore[cacheKey] = headers.etag ?? null;
+        const issues = await this.getIssuesFromData(data);
+        cacheStore[cacheKey] = issues;
+        return issues;
+      } catch (error) {
+        if (error.status === 304) {
+          this.deskthing.sendLog(
+            `No updates to ${state} Issues for ${cacheKey}`
+          );
+          return cacheStore[cacheKey] || [];
+        } else {
+          this.deskthing.sendError(`Error fetching ${state} Issues: ${error}`);
+          return [];
+        }
       }
+    };
 
-      this.issueRequestEtags[`${ownerName}/${repoName}`] = headers.etag ?? null;
+    const [openIssues, closedIssues] = await Promise.all([
+      fetchIssues('open', this.openIssueRequestEtagStore, this.openIssueStore),
+      fetchIssues(
+        'closed',
+        this.closedIssueRequestEtagStore,
+        this.closedIssueStore
+      ),
+    ]);
 
-      const issues: GitHubIssue[] = [];
+    return [...openIssues, ...closedIssues];
+  }
 
-      data.forEach((currentIssue) => {
-        const issue: GitHubIssue = {
+  private async getIssuesFromData(data: any): Promise<GitHubIssue[]> {
+    return Promise.all(
+      data.map(async (currentIssue) => {
+        const labels = currentIssue.labels
+          .filter(
+            (label) =>
+              typeof label !== 'string' && label.id && label.name && label.color
+          )
+          .map((label) => ({
+            id: label.id,
+            name: label.name,
+            color: label.color,
+          }));
+
+        const user = currentIssue.user
+          ? {
+              id: currentIssue.user.id,
+              username: currentIssue.user.login,
+              avatarUrl: currentIssue.user.avatar_url,
+              url: currentIssue.user.html_url,
+            }
+          : null;
+
+        return {
           id: currentIssue.id,
           number: currentIssue.number,
           title: currentIssue.title,
@@ -337,52 +426,11 @@ class GitHubService {
           updatedAt: currentIssue.updated_at,
           closedAt: currentIssue.closed_at,
           url: currentIssue.html_url,
-          labels: [],
+          labels,
+          user,
         };
-
-        currentIssue.labels.forEach((label) => {
-          if (
-            typeof label !== 'string' &&
-            label.id &&
-            label.name &&
-            label.color
-          ) {
-            const gitHubLabel: GitHubLabel = {
-              id: label.id,
-              name: label.name,
-              color: label.color,
-            };
-            issue.labels.push(gitHubLabel);
-          }
-        });
-
-        if (currentIssue.user) {
-          const user: GitHubUser = {
-            id: currentIssue.user.id,
-            username: currentIssue.user.login,
-            avatarUrl: currentIssue.user.avatar_url,
-            url: currentIssue.user.html_url,
-          };
-
-          issue.user = user;
-        }
-
-        issues.push(issue);
-      });
-
-      this.issues[`${ownerName}/${repoName}`] = issues;
-
-      return issues;
-    } catch (error) {
-      if (error.status && error.status == 304) {
-        this.deskthing.sendLog(
-          `No updates to Issues for ${ownerName}/${repoName}`
-        );
-        return this.issues[`${ownerName}/${repoName}`];
-      }
-      this.deskthing.sendError(`Error fetching issues: ${error}`);
-      return undefined;
-    }
+      })
+    );
   }
 }
 
