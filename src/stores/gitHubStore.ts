@@ -3,6 +3,10 @@ import { SocketData } from 'deskthing-server';
 
 export type GitHubData = {
   /**
+   * Authenticated GitHub User
+   */
+  user?: GitHubUser;
+  /**
    * Authenticated GitHub User's Repositories
    */
   myRepositories?: GitHubRepo[];

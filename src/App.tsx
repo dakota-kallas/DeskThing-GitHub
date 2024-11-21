@@ -42,17 +42,7 @@ const App: React.FC = () => {
   }, [filter]);
 
   useEffect(() => {
-    if (filter === 'repos') {
-      setCurrentRepos(gitHubData?.myRepositories);
-      if (
-        !gitHubData?.myRepositories ||
-        currentRepoIndex >= gitHubData.myRepositories.length
-      ) {
-        setCurrentRepoIndex(0);
-      }
-    }
     if (filter === 'stars') {
-      setCurrentRepos(gitHubData?.starredRepositories);
       setCurrentRepos(gitHubData?.starredRepositories);
       if (
         !gitHubData?.starredRepositories ||
@@ -60,6 +50,22 @@ const App: React.FC = () => {
       ) {
         setCurrentRepoIndex(0);
       }
+      return;
+    }
+
+    // If there are no repositories, fallback to 'stars' filter
+    if (gitHubData?.myRepositories && gitHubData.myRepositories.length === 0) {
+      setFilter('stars');
+      return;
+    }
+
+    // Fallback to 'repos' filter
+    setCurrentRepos(gitHubData?.myRepositories);
+    if (
+      !gitHubData?.myRepositories ||
+      currentRepoIndex >= gitHubData.myRepositories.length
+    ) {
+      setCurrentRepoIndex(0);
     }
   }, [gitHubData]);
 
@@ -127,9 +133,38 @@ const App: React.FC = () => {
     gitHubStore.getIssues(ownerName, repoName);
   }
 
-  return (
-    <div className='appContainer w-screen h-screen'>
-      <Header lastUpdated={gitHubData?.lastUpdated} />
+  function getContent() {
+    if (!gitHubData) {
+      return <div>Loading...</div>;
+    }
+
+    if (!gitHubData.user) {
+      return (
+        <div className='validation'>
+          <h1>Unable to retrieve Authenticated User</h1>
+          <h2>
+            Ensure you have you GitHub Access Token configured in Settings
+          </h2>
+        </div>
+      );
+    }
+
+    if (
+      (!gitHubData.myRepositories || gitHubData.myRepositories.length === 0) &&
+      (!gitHubData.starredRepositories ||
+        gitHubData.starredRepositories.length === 0)
+    ) {
+      return (
+        <div className='validation'>
+          <h1>No Repositories Found</h1>
+          <h2>
+            Unable to locate any Repositories for ${gitHubData.user.username}
+          </h2>
+        </div>
+      );
+    }
+
+    return (
       <div className='contentContainer' ref={contentContainerRef}>
         {(!pullRequests || pullRequests.length == 0) &&
           (!issues || issues.length == 0) && (
@@ -143,24 +178,30 @@ const App: React.FC = () => {
               />
               {isTallEnough && (
                 <div className='repoContainer--tabs'>
-                  <button
-                    className={`repoContainer--filter ${
-                      filter === 'repos' ? 'active' : ''
-                    }`}
-                    onClick={() => setFilter('repos')}
-                  >
-                    <RepoIcon size={32} />
-                    <p>Repositories</p>
-                  </button>
-                  <button
-                    className={`repoContainer--filter ${
-                      filter === 'stars' ? 'active' : ''
-                    }`}
-                    onClick={() => setFilter('stars')}
-                  >
-                    <StarIcon size={32} />
-                    <p>Stars</p>
-                  </button>
+                  {gitHubData.myRepositories &&
+                    gitHubData.myRepositories.length > 0 && (
+                      <button
+                        className={`repoContainer--filter ${
+                          filter === 'repos' ? 'active' : ''
+                        }`}
+                        onClick={() => setFilter('repos')}
+                      >
+                        <RepoIcon size={32} />
+                        <p>Repositories</p>
+                      </button>
+                    )}
+                  {gitHubData.starredRepositories &&
+                    gitHubData.starredRepositories.length > 0 && (
+                      <button
+                        className={`repoContainer--filter ${
+                          filter === 'stars' ? 'active' : ''
+                        }`}
+                        onClick={() => setFilter('stars')}
+                      >
+                        <StarIcon size={32} />
+                        <p>Stars</p>
+                      </button>
+                    )}
                 </div>
               )}
             </>
@@ -181,6 +222,13 @@ const App: React.FC = () => {
             <Issues issues={issues} onBackClick={handleBackClick} />
           )}
       </div>
+    );
+  }
+
+  return (
+    <div className='appContainer w-screen h-screen'>
+      <Header lastUpdated={gitHubData?.lastUpdated} />
+      {getContent()}
     </div>
   );
 };

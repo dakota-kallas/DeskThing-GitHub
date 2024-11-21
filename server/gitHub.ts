@@ -3,10 +3,8 @@ import { DataInterface } from 'deskthing-server';
 import {
   GitHubData,
   GitHubIssue,
-  GitHubLabel,
   GitHubPullRequest,
   GitHubRepo,
-  GitHubUser,
 } from '../src/stores/gitHubStore';
 import { Octokit } from '@octokit/rest';
 
@@ -16,9 +14,10 @@ class GitHubService {
   private updateTaskId: (() => void) | null = null;
   private deskthing: typeof DeskThing;
   private static instance: GitHubService | null = null;
-  private refreshInterval: number = 5;
+  private refreshInterval: number = 15;
   private gitHubAccessToken: string | null = null;
 
+  private userRequestEtag: string | null = null;
   private repoRequestEtag: string | null = null;
   private starredReposRequestEtag: string | null = null;
 
@@ -53,7 +52,10 @@ class GitHubService {
       auth: this.gitHubAccessToken || '',
     });
 
-    await this.fillMyRepositories(octokit);
+    this.gitHubData.user = await this.getAuthenticatedUser(octokit);
+    if (this.gitHubData.user) {
+      await this.fillMyRepositories(octokit);
+    }
 
     const now = new Date();
     const timeString = now.toLocaleTimeString([], {
@@ -77,7 +79,8 @@ class GitHubService {
     }
     this.updateTaskId = DeskThing.addBackgroundTaskLoop(async () => {
       this.updateGitHub();
-      const interval = this.refreshInterval > 0 ? this.refreshInterval : 1;
+      // Don't allow refresh intervals less than 0 minutes
+      const interval = this.refreshInterval > 0 ? this.refreshInterval : 15;
       await this.sleep(interval * 60 * 1000);
     }); // Update every set amount of minutes
   }
@@ -94,7 +97,7 @@ class GitHubService {
     try {
       this.deskthing.sendLog('Updating settings...');
       this.refreshInterval =
-        (data.settings.refreshInterval.value as number) || 5;
+        (data.settings.refreshInterval.value as number) || 15;
       this.gitHubAccessToken =
         (data.settings.gitHubAccessToken.value as string) || null;
       this.updateGitHub();
@@ -120,15 +123,14 @@ class GitHubService {
     return this.gitHubData;
   }
 
-  private async fillMyRepositories(octokit: Octokit) {
+  private async getAuthenticatedUser(octokit: Octokit) {
     try {
       const requestHeaders: Record<string, string> = {};
-      if (this.repoRequestEtag) {
-        requestHeaders['If-None-Match'] = this.repoRequestEtag;
+      if (this.userRequestEtag) {
+        requestHeaders['If-None-Match'] = this.userRequestEtag;
       }
 
-      const { data, headers } = await octokit.repos.listForAuthenticatedUser({
-        per_page: 100,
+      const { data, headers } = await octokit.users.getAuthenticated({
         headers: requestHeaders,
       });
 
@@ -137,89 +139,123 @@ class GitHubService {
         return;
       }
 
-      this.repoRequestEtag = headers.etag ?? null;
+      this.userRequestEtag = headers.etag ?? null;
 
-      this.gitHubData.myRepositories = await this.getReposFromData(data);
+      this.deskthing.sendLog(`User Headers: ${JSON.stringify(headers)}`);
+      return {
+        id: data.id,
+        username: data.login,
+        avatarUrl: await this.deskthing.encodeImageFromUrl(data.avatar_url),
+        url: data.html_url,
+      };
     } catch (error) {
-      if (error.status && error.status == 304) {
-        this.deskthing.sendLog(`No updates to Repositories`);
-        return;
+      if (error.status === 304) {
+        this.deskthing.sendLog(`No updates to Authenticated User`);
+        return this.gitHubData.user;
+      } else {
+        this.deskthing.sendError(`Error fetching Authenticated User: ${error}`);
+        return undefined;
       }
-      this.deskthing.sendLog('Error fetching Repositories: ' + error);
-    }
-
-    try {
-      const starredRequestHeaders: Record<string, string> = {};
-      if (this.starredReposRequestEtag) {
-        starredRequestHeaders['If-None-Match'] = this.starredReposRequestEtag;
-      }
-
-      const { data: starredData, headers: starredHeaders } =
-        await octokit.rest.activity.listReposStarredByAuthenticatedUser({
-          per_page: 100,
-          headers: starredRequestHeaders,
-        });
-
-      if (starredHeaders['x-ratelimit-remaining'] === '0') {
-        this.deskthing.sendLog('Rate limit reached');
-        return;
-      }
-
-      this.starredReposRequestEtag = starredHeaders.etag ?? null;
-
-      this.gitHubData.starredRepositories = await this.getReposFromData(
-        starredData
-      );
-    } catch (error) {
-      if (error.status && error.status == 304) {
-        this.deskthing.sendLog(`No updates to Starred Repositories`);
-        return;
-      }
-      this.deskthing.sendLog('Error fetching Starred Repositories: ' + error);
     }
   }
 
+  private async fillMyRepositories(octokit: Octokit) {
+    const fetchRepos = async (
+      fetchFn: () => Promise<any>,
+      etagStore: { value: string | null },
+      cacheStore: (data: any) => Promise<void>,
+      logPrefix: string
+    ) => {
+      const requestHeaders: Record<string, string> = {};
+      if (etagStore.value) {
+        requestHeaders['If-None-Match'] = etagStore.value;
+      }
+
+      try {
+        const { data, headers } = await fetchFn();
+
+        if (headers['x-ratelimit-remaining'] === '0') {
+          this.deskthing.sendLog('Rate limit reached');
+          return;
+        }
+
+        etagStore.value = headers.etag ?? null;
+        await cacheStore(data);
+      } catch (error) {
+        if (error.status === 304) {
+          this.deskthing.sendLog(`No updates to ${logPrefix}`);
+        } else {
+          this.deskthing.sendError(`Error fetching ${logPrefix}: ${error}`);
+        }
+      }
+    };
+
+    await fetchRepos(
+      () =>
+        octokit.repos.listForAuthenticatedUser({
+          per_page: 100,
+          headers: {
+            'If-None-Match': this.repoRequestEtag || '',
+          },
+        }),
+      { value: this.repoRequestEtag },
+      async (data) => {
+        this.gitHubData.myRepositories = await this.getReposFromData(data);
+      },
+      'Repositories'
+    );
+
+    await fetchRepos(
+      () =>
+        octokit.rest.activity.listReposStarredByAuthenticatedUser({
+          per_page: 100,
+          headers: {
+            'If-None-Match': this.starredReposRequestEtag || '',
+          },
+        }),
+      { value: this.starredReposRequestEtag },
+      async (data) => {
+        this.gitHubData.starredRepositories = await this.getReposFromData(data);
+      },
+      'Starred Repositories'
+    );
+  }
+
   private async getReposFromData(data: any): Promise<GitHubRepo[]> {
-    const repos: GitHubRepo[] = [];
-
-    for (const repo of data) {
-      const user: GitHubUser = {
-        id: repo.owner.id,
-        username: repo.owner.login,
-        avatarUrl: await this.deskthing.encodeImageFromUrl(
-          repo.owner.avatar_url
-        ),
-        url: repo.owner.html_url,
-      };
-
-      const myRepo: GitHubRepo = {
-        id: repo.id,
-        fullName: repo.full_name,
-        name: repo.name,
-        description: repo.description,
-        stars: repo.stargazers_count,
-        watchers: repo.watchers_count,
-        forks: repo.forks_count,
-        defaultBranch: repo.default_branch,
-        updatedAt: repo.updated_at,
-        createdAt: repo.created_at,
-        pushedAt: repo.pushed_at,
-        language: repo.language,
-        archived: repo.archived,
-        disabled: repo.disabled,
-        visibility: repo.visibility,
-        openIssues: repo.open_issues_count,
-        private: repo.private,
-        fork: repo.fork,
-        size: repo.size,
-        url: repo.html_url,
-        owner: user,
-      };
-
-      repos.push(myRepo);
-    }
-
-    return repos;
+    return Promise.all(
+      data.map(
+        async (repo): Promise<GitHubRepo> => ({
+          id: repo.id,
+          fullName: repo.full_name,
+          name: repo.name,
+          description: repo.description,
+          stars: repo.stargazers_count,
+          watchers: repo.watchers_count,
+          forks: repo.forks_count,
+          defaultBranch: repo.default_branch,
+          updatedAt: repo.updated_at,
+          createdAt: repo.created_at,
+          pushedAt: repo.pushed_at,
+          language: repo.language,
+          archived: repo.archived,
+          disabled: repo.disabled,
+          visibility: repo.visibility,
+          openIssues: repo.open_issues_count,
+          private: repo.private,
+          fork: repo.fork,
+          size: repo.size,
+          url: repo.html_url,
+          owner: {
+            id: repo.owner.id,
+            username: repo.owner.login,
+            avatarUrl: await this.deskthing.encodeImageFromUrl(
+              repo.owner.avatar_url
+            ),
+            url: repo.owner.html_url,
+          },
+        })
+      )
+    );
   }
 
   public async getPullRequestsForRepo(ownerName: string, repoName: string) {
@@ -298,18 +334,7 @@ class GitHubService {
           color: label.color,
         }));
 
-        const user = pull.user
-          ? {
-              id: pull.user.id,
-              username: pull.user.login,
-              avatarUrl: await this.deskthing.encodeImageFromUrl(
-                pull.user.avatar_url
-              ),
-              url: pull.user.html_url,
-            }
-          : null;
-
-        return {
+        const pullRequest: GitHubPullRequest = {
           id: pull.id,
           number: pull.number,
           title: pull.title,
@@ -325,8 +350,20 @@ class GitHubService {
           headBranch: pull.head.label,
           url: pull.html_url,
           labels,
-          user,
         };
+
+        if (pull.user) {
+          pullRequest.user = {
+            id: pull.user.id,
+            username: pull.user.login,
+            avatarUrl: await this.deskthing.encodeImageFromUrl(
+              pull.user.avatar_url
+            ),
+            url: pull.user.html_url,
+          };
+        }
+
+        return pullRequest;
       })
     );
   }
@@ -404,16 +441,7 @@ class GitHubService {
             color: label.color,
           }));
 
-        const user = currentIssue.user
-          ? {
-              id: currentIssue.user.id,
-              username: currentIssue.user.login,
-              avatarUrl: currentIssue.user.avatar_url,
-              url: currentIssue.user.html_url,
-            }
-          : null;
-
-        return {
+        const issue: GitHubIssue = {
           id: currentIssue.id,
           number: currentIssue.number,
           title: currentIssue.title,
@@ -427,8 +455,20 @@ class GitHubService {
           closedAt: currentIssue.closed_at,
           url: currentIssue.html_url,
           labels,
-          user,
         };
+
+        if (currentIssue.user) {
+          issue.user = {
+            id: currentIssue.user.id,
+            username: currentIssue.user.login,
+            avatarUrl: await this.deskthing.encodeImageFromUrl(
+              currentIssue.user.avatar_url
+            ),
+            url: currentIssue.user.html_url,
+          };
+        }
+
+        return issue;
       })
     );
   }
