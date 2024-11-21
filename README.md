@@ -2,7 +2,10 @@
 
 The GitHub app for DeskThing offers seamless management of repositories, pull requests, and issues, helping you stay organized and focused with real-time updates.
 
-![GitHub]()
+<img src="https://github.com/user-attachments/assets/37fae2ba-5d78-49d9-b667-c3c066ce88c5" width="500" />
+<br/>
+<img src="https://github.com/user-attachments/assets/d20b6c4e-cc85-4542-9b4a-ddb58fc89d54" width="500" />
+<img src="https://github.com/user-attachments/assets/c6f42985-9cbc-4c2d-949a-2a508ac7165f" width="500" />
 
 ## Features
 
@@ -19,6 +22,7 @@ Make sure you have the following:
 
 - [DeskThing](https://deskthing.app/)
 - [GitHub Account](https://github.com/)
+- [GitHub Access Token](#github-access-token)
 
 ### Setup
 
@@ -89,4 +93,6 @@ Create a pull request and described the added / modified functionality.
 
 ## Additional Screenshots
 
-<img src="" height="400" />
+<img src="https://github.com/user-attachments/assets/29aee28f-ca3d-442b-b099-44e75683b325" height="400" />
+<img src="https://github.com/user-attachments/assets/96454511-cf98-4d65-a168-fd9228926b68" height="400" />
+<img src="https://github.com/user-attachments/assets/49869162-1394-4cb2-8d4b-656e19d9eec1" height="400" />
