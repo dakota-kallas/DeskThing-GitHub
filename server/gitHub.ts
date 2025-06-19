@@ -1,5 +1,4 @@
-import { DeskThing } from './index';
-import { DataInterface } from 'deskthing-server';
+import { DeskThing } from '@deskthing/server';
 import {
   GitHubData,
   GitHubIssue,
@@ -7,6 +6,7 @@ import {
   GitHubRepo,
 } from '../src/stores/gitHubStore';
 import { Octokit } from '@octokit/rest';
+import { AppSettings } from '@deskthing/types'
 
 class GitHubService {
   private gitHubData: GitHubData = {};
@@ -32,7 +32,6 @@ class GitHubService {
   private closedIssueStore: Record<string, GitHubIssue[]> = {};
 
   constructor() {
-    this.deskthing = DeskThing;
     this.updateGitHub();
     this.scheduleIntervalUpdates();
   }
@@ -45,7 +44,7 @@ class GitHubService {
   }
 
   private async updateGitHub() {
-    this.deskthing.sendLog(`Fetching GitHub data...`);
+    console.log(`Fetching GitHub data...`);
 
     // Setup GitHub API Requests
     const octokit = new Octokit({
@@ -66,8 +65,8 @@ class GitHubService {
     this.lastUpdateTime = now;
     this.gitHubData.lastUpdated = timeString;
 
-    this.deskthing.sendLog(`GitHub updated`);
-    this.deskthing.sendDataToClient({
+    console.log(`GitHub updated`);
+    DeskThing.send({
       type: 'github_data',
       payload: this.gitHubData,
     });
@@ -89,20 +88,20 @@ class GitHubService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  public updateData(data: DataInterface) {
-    if (!data.settings) {
-      this.deskthing.sendLog('No settings defined');
+  public updateData(data: AppSettings) {
+    if (!data) {
+      console.log('No settings defined');
       return;
     }
     try {
-      this.deskthing.sendLog('Updating settings...');
+      console.log('Updating settings...');
       this.refreshInterval =
-        (data.settings.refreshInterval.value as number) || 15;
+        (data.refreshInterval.value as number) || 15;
       this.gitHubAccessToken =
-        (data.settings.gitHubAccessToken.value as string) || null;
+        (data.gitHubAccessToken.value as string) || null;
       this.updateGitHub();
     } catch (error) {
-      this.deskthing.sendLog('Error updating GitHub data: ' + error);
+      console.log('Error updating GitHub data: ' + error);
     }
   }
 
@@ -116,10 +115,10 @@ class GitHubService {
       !this.lastUpdateTime ||
       new Date().getTime() - this.lastUpdateTime.getTime() > 15 * 60 * 1000
     ) {
-      DeskThing.sendLog('Fetching GitHub data...');
+      console.log('Fetching GitHub data...');
       await this.updateGitHub();
     }
-    DeskThing.sendLog('Returning GitHub data');
+    console.log('Returning GitHub data');
     return this.gitHubData;
   }
 
@@ -135,25 +134,25 @@ class GitHubService {
       });
 
       if (headers['x-ratelimit-remaining'] === '0') {
-        this.deskthing.sendLog('Rate limit reached');
+        console.log('Rate limit reached');
         return;
       }
 
       this.userRequestEtag = headers.etag ?? null;
 
-      this.deskthing.sendLog(`User Headers: ${JSON.stringify(headers)}`);
+      console.log(`User Headers: ${JSON.stringify(headers)}`);
       return {
         id: data.id,
         username: data.login,
-        avatarUrl: await this.deskthing.encodeImageFromUrl(data.avatar_url),
+        avatarUrl: data.avatar_url,
         url: data.html_url,
       };
     } catch (error) {
       if (error.status === 304) {
-        this.deskthing.sendLog(`No updates to Authenticated User`);
+        console.log(`No updates to Authenticated User`);
         return this.gitHubData.user;
       } else {
-        this.deskthing.sendError(`Error fetching Authenticated User: ${error}`);
+        console.error(`Error fetching Authenticated User: ${error}`);
         return undefined;
       }
     }
@@ -175,7 +174,7 @@ class GitHubService {
         const { data, headers } = await fetchFn();
 
         if (headers['x-ratelimit-remaining'] === '0') {
-          this.deskthing.sendLog('Rate limit reached');
+          console.log('Rate limit reached');
           return;
         }
 
@@ -183,9 +182,9 @@ class GitHubService {
         await cacheStore(data);
       } catch (error) {
         if (error.status === 304) {
-          this.deskthing.sendLog(`No updates to ${logPrefix}`);
+          console.log(`No updates to ${logPrefix}`);
         } else {
-          this.deskthing.sendError(`Error fetching ${logPrefix}: ${error}`);
+          console.error(`Error fetching ${logPrefix}: ${error}`);
         }
       }
     };
@@ -248,9 +247,7 @@ class GitHubService {
           owner: {
             id: repo.owner.id,
             username: repo.owner.login,
-            avatarUrl: await this.deskthing.encodeImageFromUrl(
-              repo.owner.avatar_url
-            ),
+            avatarUrl: repo.owner.avatar_url,
             url: repo.owner.html_url,
           },
         })
@@ -284,7 +281,7 @@ class GitHubService {
         });
 
         if (headers['x-ratelimit-remaining'] === '0') {
-          this.deskthing.sendLog('Rate limit reached');
+          console.log('Rate limit reached');
           return [];
         }
 
@@ -294,12 +291,12 @@ class GitHubService {
         return pullRequests;
       } catch (error) {
         if (error.status === 304) {
-          this.deskthing.sendLog(
+          console.log(
             `No updates to ${state} Pull Requests for ${cacheKey}`
           );
           return cacheStore[cacheKey] || [];
         } else {
-          this.deskthing.sendError(
+          console.error(
             `Error fetching ${state} Pull Requests: ${error}`
           );
           return [];
@@ -356,9 +353,7 @@ class GitHubService {
           pullRequest.user = {
             id: pull.user.id,
             username: pull.user.login,
-            avatarUrl: await this.deskthing.encodeImageFromUrl(
-              pull.user.avatar_url
-            ),
+            avatarUrl: pull.user.avatar_url,
             url: pull.user.html_url,
           };
         }
@@ -394,7 +389,7 @@ class GitHubService {
         });
 
         if (headers['x-ratelimit-remaining'] === '0') {
-          this.deskthing.sendLog('Rate limit reached');
+          console.log('Rate limit reached');
           return [];
         }
 
@@ -404,12 +399,12 @@ class GitHubService {
         return issues;
       } catch (error) {
         if (error.status === 304) {
-          this.deskthing.sendLog(
+          console.log(
             `No updates to ${state} Issues for ${cacheKey}`
           );
           return cacheStore[cacheKey] || [];
         } else {
-          this.deskthing.sendError(`Error fetching ${state} Issues: ${error}`);
+          console.error(`Error fetching ${state} Issues: ${error}`);
           return [];
         }
       }
@@ -461,9 +456,7 @@ class GitHubService {
           issue.user = {
             id: currentIssue.user.id,
             username: currentIssue.user.login,
-            avatarUrl: await this.deskthing.encodeImageFromUrl(
-              currentIssue.user.avatar_url
-            ),
+            avatarUrl: currentIssue.user.avatar_url,
             url: currentIssue.user.html_url,
           };
         }
