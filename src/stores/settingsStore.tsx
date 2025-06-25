@@ -1,27 +1,24 @@
-import { DeskThing } from 'deskthing-client';
-import { Settings, SocketData } from 'deskthing-client/dist/types';
+import { DeskThing } from "@deskthing/client";
+import { AppSettings, DEVICE_CLIENT, DeviceToClientCore, SocketData } from "@deskthing/types";
 
-type SettingListener = (data: Settings) => Promise<void>;
+type SettingListener = (data: AppSettings) => Promise<void>;
 type TimeListener = (data: string) => Promise<void>;
 
 export class SettingsStore {
   private static instance: SettingsStore;
-  private deskthing: DeskThing;
   private listeners: ((data: SocketData) => void)[] = [];
   private settingsListeners: SettingListener[] = [];
   private timeListeners: TimeListener[] = [];
-  private currentSettings: Settings | null = null;
-  private time: string = '00:00 AM';
+  private currentSettings: AppSettings | null = null;
+  private time: string = "00:00 AM";
 
   constructor() {
-    this.deskthing = DeskThing.getInstance();
     this.listeners.push(
-      this.deskthing.on('settings', this.handleSetting.bind(this))
+      DeskThing.on(DEVICE_CLIENT.SETTINGS, this.handleSetting.bind(this))
     );
     this.listeners.push(
-      this.deskthing.on('time', this.handleClient.bind(this))
+      DeskThing.on(DEVICE_CLIENT.TIME, this.handleClient.bind(this))
     );
-    this.deskthing.sendMessageToParent({ app: 'server', type: 'get' });
   }
 
   static getInstance(): SettingsStore {
@@ -31,33 +28,38 @@ export class SettingsStore {
     return SettingsStore.instance;
   }
 
-  private handleSetting(data: Settings) {
-    this.currentSettings = data;
+  private handleSetting(
+    data: Extract<DeviceToClientCore, { type: DEVICE_CLIENT.SETTINGS }>
+  ) {
+    this.currentSettings = data.payload;
     if (this.currentSettings != null) {
       this.settingsListeners.forEach((listener) =>
-        listener(this.currentSettings as Settings)
+        listener(this.currentSettings as AppSettings)
       );
     }
   }
 
-  private handleClient(data: string) {
-    this.time = data;
+  private handleClient(
+    data: Extract<DeviceToClientCore, { type: DEVICE_CLIENT.TIME }>
+  ) {
+    if (typeof data.payload != "string") return;
+    this.time = data.payload;
     this.timeListeners.forEach((listener) => listener(this.time));
   }
 
-  getSettings(): Settings | null {
+  getSettings(): AppSettings | null {
     if (!this.currentSettings) {
-      this.deskthing.sendMessageToParent({
-        app: 'client',
-        type: 'get',
-        request: 'settings',
+      DeskThing.send({
+        app: "client",
+        type: "get",
+        request: "settings",
       });
     }
     return this.currentSettings;
   }
 
   getTime(): string {
-    this.deskthing.sendMessageToParent({ app: 'server', type: 'get' });
+    DeskThing.send({ app: "server", type: "get" });
     return this.time;
   }
 

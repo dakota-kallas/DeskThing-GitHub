@@ -1,5 +1,5 @@
-import { DeskThing } from 'deskthing-client';
-import { SocketData } from 'deskthing-server';
+import { DeskThing } from "@deskthing/client";
+import { SocketData } from "@deskthing/types";
 
 export type GitHubData = {
   /**
@@ -32,7 +32,7 @@ export interface GitHubIssue {
   number: number;
   title: string;
   state: string;
-  stateReason?: 'completed' | 'reopened' | 'not_planned' | null;
+  stateReason?: "completed" | "reopened" | "not_planned" | null;
   locked: boolean;
   draft: boolean;
   user?: GitHubUser;
@@ -102,24 +102,22 @@ export class GitHubStore {
   private gitHubData: GitHubData | null = null;
   private pullRequests: GitHubPullRequest[] | null = null;
   private issues: GitHubIssue[] | null = null;
-  private deskThing: DeskThing;
   private listeners: GitHubListener[] = [];
   private pullRequestsListener: PullRequestsListener = () => {};
   private issuesListener: IssuesListener = () => {};
 
   constructor() {
-    this.deskThing = DeskThing.getInstance();
-    this.deskThing.on('github', (data: SocketData) => {
-      if (data.type === 'github_data') {
-        this.gitHubData = data.payload as GitHubData;
-        this.notifyListeners();
-      } else if (data.type === 'github_pull_requests') {
-        this.pullRequests = data.payload as GitHubPullRequest[];
-        this.pullRequestsListener(this.pullRequests);
-      } else if (data.type === 'github_issues') {
-        this.issues = data.payload as GitHubIssue[];
-        this.issuesListener(this.issues);
-      }
+    DeskThing.on("github_data", (data: SocketData) => {
+      this.gitHubData = data.payload as GitHubData;
+      this.notifyListeners();
+    });
+    DeskThing.on("github_pull_requests", (data: SocketData) => {
+      this.pullRequests = data.payload as GitHubPullRequest[];
+      this.pullRequestsListener(this.pullRequests);
+    });
+    DeskThing.on("github_issues", (data: SocketData) => {
+      this.issues = data.payload as GitHubIssue[];
+      this.issuesListener(this.issues);
     });
 
     this.requestGitHubData();
@@ -156,9 +154,9 @@ export class GitHubStore {
   }
 
   openURL(url: string) {
-    this.deskThing.send({
-      type: 'get',
-      request: 'open_url',
+    DeskThing.send({
+      type: "get",
+      request: "open_url",
       payload: url,
     });
   }
@@ -189,18 +187,18 @@ export class GitHubStore {
     if (!this.gitHubData) {
       this.getGitHubData();
     }
-    this.deskThing.send({
-      app: 'client',
-      type: 'log',
-      payload: 'Getting GitHub data',
+    DeskThing.send({
+      app: "client",
+      type: "log",
+      payload: "Getting GitHub data",
     });
     this.listeners.forEach((listener) => listener(this.gitHubData));
   }
 
   async requestGitHubData(): Promise<void> {
-    this.deskThing.send({
-      type: 'get',
-      request: 'github_data',
+    DeskThing.send({
+      type: "get",
+      request: "github_data",
     });
   }
 
@@ -208,9 +206,9 @@ export class GitHubStore {
     ownerName: string,
     repoName: string
   ): Promise<void> {
-    this.deskThing.send({
-      type: 'get',
-      request: 'github_pull_requests',
+    DeskThing.send({
+      type: "get",
+      request: "github_pull_requests",
       payload: {
         ownerName,
         repoName,
@@ -219,9 +217,9 @@ export class GitHubStore {
   }
 
   async requestIssues(ownerName: string, repoName: string): Promise<void> {
-    this.deskThing.send({
-      type: 'get',
-      request: 'github_issues',
+    DeskThing.send({
+      type: "get",
+      request: "github_issues",
       payload: {
         ownerName,
         repoName,

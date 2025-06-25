@@ -8,6 +8,8 @@ import {
   RepoIcon,
   StarIcon,
 } from '@primer/octicons-react';
+import { useEffect, useState } from 'react'
+import { DeskThing } from '@deskthing/client'
 
 interface RepoProps {
   repo: GitHubRepo;
@@ -22,6 +24,14 @@ const Repo = ({
   onIssuesClick,
   onRepoClick,
 }: RepoProps) => {
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!repo.owner.avatarUrl) return;
+    const url = DeskThing.useProxy(repo.owner.avatarUrl);
+    setAvatarUrl(`${url}${repo.owner.avatarUrl}`);
+  }, [repo.owner.avatarUrl]);
+
   return (
     <div className='repo'>
       <div className='repo--header'>
@@ -33,7 +43,7 @@ const Repo = ({
       </div>
       <div className='repo--owner'>
         <img
-          src={repo.owner.avatarUrl}
+          src={avatarUrl}
           alt='Owner Avatar'
           className='repo--avatar'
         />
